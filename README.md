@@ -10,12 +10,13 @@
   * [데이터 계층의 재정의: bun-spring-starter-data-lib](#데이터-계층의-재정의-bun-spring-starter-data-lib)
     * [데이터 저장소 일관된 설정 구조 제공](#데이터-저장소-일관된-설정-구조-제공)
     * [조직 표준 분산락 구현](#조직-표준-분산락-구현)
-      * [*CohortDistributedLock*](#cohortdistributedlock)
+      * [CohortDistributedLock](#cohortdistributedlock)
     * [querydsl 확장](#querydsl-확장)
     * [jpa 타입 확장](#jpa-타입-확장)
       * [상황별 최적화를 제공하는 EnumColumn 시스템](#상황별-최적화를-제공하는-enumcolumn-시스템)
       * [필드 레벨 암호화 SecretString](#필드-레벨-암호화-secretstring)
   * [서비스간 통신 방식 개선: bun-spring-starter-api-client-lib (개발중)](#서비스간-통신-방식-개선-bun-spring-starter-api-client-lib-개발중)
+    * [ApiPayload](#apipayload)
 * [Impact & Vision](#impact--vision)
 <!-- TOC -->
 
@@ -30,8 +31,7 @@
 - 통합테스트의 부재와 비효율적인 테스트로 소스코드의 신뢰도를 보장하지 못함
 
 Bun-Platform은 이러한 문제들을 해결하기 위해 탄생했습니다.
-이 플랫폼의 핵심 철학은 **"개발자의 인지적 부하(Cognitive Load)를 최소화하고, 실수를 컴파일 타임에 방지하며,
-모든 개발자가 비즈니스 로직에만 집중할 수 있는 '잘 닦인 고속도로(Well-Paved Road)'를 제공하는 것"**입니다.
+이 플랫폼의 핵심 철학은 **개발자의 인지적 부하를 최소화하고, 실수를 컴파일 타임에 방지하며, 모든 개발자가 재미있게 비즈니스 로직에만 집중할 수 있는 잘 닦인 고속도로를 제공하는 것** 입니다.
 
 저는 이 비전을 실현하기 위해 API, 데이터, 이벤트, MSA 통신, 테스트 등 백엔드 개발의 전체 생명주기를 아우르는 플랫폼을 0에서 1로 직접 설계하고 구축했습니다.
 
@@ -181,7 +181,7 @@ interface ApiErrorResult {
 
 ***Solution***
 
-사내 인프라를 설정 클래스로 모델링하고, 파라메터 정의, 실행 환경별 디폴트 설정 제공을 통해 해결했습니다.
+인프라를 설정 클래스로 모델링하고, 파라메터 정의, 실행 환경별 디폴트 설정 제공을 통해 해결했습니다.
 하단은 이 문제를 해결한 뒤의 datasource 설정 코드 입니다.
 
 ```kotlin
@@ -221,12 +221,12 @@ annotation class EnablePrimaryDataSource(val dataSource: KClass<out BunDataSourc
 이 문제를 해결하기 위해, 먼저 실제 분산 락처럼 동작하지만 메모리 내에서만 비동기적으로 작동하는 정교한 테스트 더블(Test Double)인 `InMemoryLock`을 직접 구현했습니다.
 또한 서버 실행시 실행 환경, 런타임 클래스 여부 등을 판단하여 적합한 분산락 인스턴스를 (spin, pub/sub, inmemory) 자동으로 선택하도록 구성했습니다.
 
-이 단순한 `InMemoryLock`을 만들고 보니, 이것을 활용하여 분산 시스템의 더 근본적인 문제인 **'Thundering Herd'**를 해결할 수 있다는 통찰을 얻게 되었습니다.
+이 단순한 `InMemoryLock`을 만들고 보니, 이것을 활용하여 분산 시스템의 더 근본적인 문제인 **Thundering Herd**를 해결할 수 있다는 통찰을 얻게 되었습니다.
 
-#### *CohortDistributedLock*
+#### CohortDistributedLock
 
-저는 제가 만든 `InMemoryLock` 을 **'로컬 락'**으로 활용하여 이 문제를 해결했습니다.
-먼저 각 서버 내부에서 로컬 락으로 '대표 스레드'를 단 하나만 선출하고, 오직 이 소수의 대표들만이 실제 '글로벌 분산 락' 경쟁에 참여하도록 설계했습니다.
+저는 제가 만든 `InMemoryLock` 을 **로컬 락**으로 활용하여 이 문제를 해결했습니다.
+먼저 각 서버 내부에서 로컬 락으로 **대표**를 단 하나만 선출하고, 오직 이 소수의 대표들만이 실제 **글로벌 분산 락** 경쟁에 참여하도록 설계했습니다.
 만들고 나니 이게 `락 코호팅`이라는걸 알게 되었고 클래스 이름을 `CohortDistributedLock` 라고 부여하게 되었습니다.
 
 ```Kotlin
@@ -253,11 +253,14 @@ class CohortDistributedLock(
 ### querydsl 확장
 
 ***Problem***
+
 Querydsl은 강력하지만, JPAQueryFactory 주입, Q-Class import, selectFrom 호출 등 모든 쿼리마다 반복되는 보일러플레이트 코드는
 개발 생산성을 저해하고 코드 가독성을 떨어뜨리는것도 문제이지만 무엇보다도 개발을 재미 없게 만든다고 저는 판단했습니다.
 
 ***Solution***
-Kotlin의 확장 함수와 람다를 활용하여, 개발자가 마치 새로운 언어(DSL)를 쓰듯이 간결하고 타입-세이프하게 Querydsl 쿼리를 작성할 수 있는 BunQuerydslExtension을 직접 창조했습니다.
+
+Kotlin의 확장 함수와 람다를 활용하여, 개발자가 마치 새로운 언어(DSL)를 쓰듯이 간결하고 타입-세이프하게 Querydsl 쿼리를 작성할 수 있는 `BunQuerydslExtension`을 직접 창조했습니다.
+
 ```kotlin
 interface UserRepository : JpaRepository<User, Long>, BunQuerydslExtension<User, QUser, Long>
 
@@ -286,7 +289,7 @@ db 상수 값 또한, raw type 으로 엔터티에 맵핑하거나 AttributeConv
 
 #### 상황별 최적화를 제공하는 EnumColumn 시스템
 
-개발자는 단순히 EnumColumn<T> 인터페이스를 구현하는 것만으로, DB 값과 Enum 사이의 타입-세이프한 변환을 보장받습니다.
+매우 간단한 사용법으로, DB 값과 Enum 사이의 타입-세이프한 변환을 보장받습니다.
 저는 여기서 한 걸음 더 나아가, 다양한 상황에 맞는 최적화된 컨버터를 함께 제공했습니다.
 
 ```Kotlin
@@ -300,7 +303,8 @@ db 상수 값 또한, raw type 으로 엔터티에 맵핑하거나 AttributeConv
  * - [IndexedEnumColumnConverter] : [IndexedEnumColumn] 을 구현한 경우에만 사용할 수 있습니다. 시간 복잡도는 O(1) 입니다.
  * - [LowerCaseEnumColumnConverter] : [LowerCaseEnumColumn] 을 구현한 경우에만 사용할 수 있습니다. 시간 복잡도는 O(1) 입니다.
  *
- * Converter 구현 및 등록은 아무렇게나 하셔도 상관없습니다만 하단과 같은 방법을 추천합니다
+ * Converter 의 두번째 파라메터는 db -> enum 변환 실패시 디폴트로 응답할 값입니다.
+ * Converter 구현 및 등록은 아무렇게나 하셔도 상관없습니다만 하단과 같은 방법을 추천합니다.
  *
  * enum class Rank(override val dbValue: Int) : com.bunjang.data.database.type.enums.EnumColumn<Int> {
  *   IRON(0), BRONZE(1), SILVER(2), GOLD(3), PLATINUM(4);
@@ -318,6 +322,17 @@ interface EnumColumn<T> {
     /** db 에 저장된 원본 값 */
     val dbValue: T
 }
+
+/**
+ * [dbValue] 가 [Int] 이며 배열 인덱스로 매핑이 가능한 경우 사용할 수 있는 인터페이스입니다.
+ *
+ * 사용 가능한 컨버터: [IndexedEnumColumnConverter]
+ *
+ * 주의사항:
+ * - 초기화 시, 필요한 경우 [List] 를 새로 생성하며, 이때 [dbValue] 의 최대값을 기준으로 [List] 의 크기를 설정합니다.
+ * - 자세한 동작 방식은 [IndexedEnumColumnConverter]의 설명을 참고하세요.
+ */
+interface IndexedEnumColumn : EnumColumn<Int>
 ```
 
 이 설계는 단순히 문제를 해결하는 것을 넘어, 성능과 편의성이라는 트레이드오프까지 고려하여 개발자에게 최적의 선택지를 제공하는, 시스템의 깊이를 보여주는 사례입니다.
@@ -400,10 +415,33 @@ sealed interface EnumProperty<E : Enum<out E>> {
 저는 이 라이브러리를 통해 api 제공자는 api-client 도 함께 제공할 의무를 가지도록 강제하고,
 통합테스트 작성을 유도하여 api client, api server 두 프로젝트를 동시에 검증하는걸 의도하고 있습니다.
 
+### ApiPayload
+
+***Problem***
+
+함수의 과도한 오버로딩은 다음과 같은 문제가 있다고 정의했습니다.
+
+- 단번에 어떤 함수를 써야 하는지 혼동을 줌
+- 주석이 길 경우, 오버로딩 되는 함수 및 주석 파악이 쉽지 않음.
+
+***Solution***
+
+빌더 패턴과 일반 DTO 전달 방식을 하나의 함수 시그니쳐로 통합하기 위해, Kotlin의 `fun interface`와 확장 람다를 활용한 `ApiPayload` 인터페이스를 설계했습니다.
+
+```kotlin
+fun interface ApiPayload<REQUEST, CONTEXT> {
+    operator fun invoke(init: REQUEST.(CONTEXT) -> Unit)
+}
+```
+
+하지만 저는 이 설계가 `fun interface`와 리시버를 받는 람다 등 Kotlin의 고급 기능에 대한 깊은 이해를 요구하기 때문에, 어려워 하는 동료 개발자들이 많을 수 있다고 판단했습니다.
+또한 저의 사용 사례에선 오버로딩은 3개 이상 넘지 않기 때문에 이건 **오버엔지니어링** 이다. 라는 판단을 하게 되었습니다.
+따라서 기술적 순수함보다는 팀 전체의 명확성과 유지보수성을 우선하여, **더 단순하고 명시적인 두 개의 오버로딩된 메서드를 제공하는 현재의 방식을 최종적으로 선택했습니다.**
+
 # Impact & Vision
 
 이 플랫폼은 현재 번개장터의 일부 팀에 적용되어 개발 생산성을 높이고 있으며, 조직의 공식적인 기술 자산으로 인정받았습니다.
 `event-publisher/subscriber` 와 같은 초기 모듈은 제가 필요해서 만들었지만, 제가 퇴사한 이후엔 거의 모든 팀이 사용하면서 수년간 조직의 핵심 인프라로 사용될 만큼 그 가치를 증명했습니다.
 
 저의 최종 목표는 이 플랫폼을 더욱 발전시켜, 신뢰성 있는 자동화 E2E 회귀 테스트를 가능하게 하는 것입니다.
-각 서비스가 자체 통합 테스트를 통해 api와 api client 를 원자적으로 증명하고, 이 '신뢰의 원자'들이 모여 전체 시스템의 안정성을 보장하는 것. 그것이 제가 그리는 기술적 비전입니다.
+각 서비스가 자체 통합 테스트를 통해 api와 api client 를 원자적으로 증명하고, 이 **신뢰의 원자**들이 모여 전체 시스템의 안정성을 보장하는 것. 그것이 제가 그리는 기술적 비전입니다.
