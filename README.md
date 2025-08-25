@@ -225,7 +225,7 @@ annotation class EnablePrimaryDataSource(val dataSource: KClass<out BunDataSourc
 
 #### CohortDistributedLock
 
-저는 제가 만든 `InMemoryLock` 을 **로컬 락**으로 활용하여 이 문제를 해결했습니다.
+제가 만든 `InMemoryLock` 을 **로컬 락**으로 활용하여 이 문제를 해결했습니다.
 먼저 각 서버 내부에서 로컬 락으로 **대표**를 단 하나만 선출하고, 오직 이 소수의 대표들만이 실제 **글로벌 분산 락** 경쟁에 참여하도록 설계했습니다.
 만들고 나니 이게 `락 코호팅`이라는걸 알게 되었고 클래스 이름을 `CohortDistributedLock` 라고 부여하게 되었습니다.
 
@@ -255,7 +255,7 @@ class CohortDistributedLock(
 ***Problem***
 
 Querydsl은 강력하지만, JPAQueryFactory 주입, Q-Class import, selectFrom 호출 등 모든 쿼리마다 반복되는 보일러플레이트 코드는
-개발 생산성을 저해하고 코드 가독성을 떨어뜨리는것도 문제이지만 무엇보다도 개발을 재미 없게 만든다고 저는 판단했습니다.
+개발 생산성을 저해하고 코드 가독성을 떨어뜨리며 무엇보다도 개발을 재미 없게 만든다고 저는 판단했습니다.
 
 ***Solution***
 
