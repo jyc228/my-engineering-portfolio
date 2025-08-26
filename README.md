@@ -1,4 +1,4 @@
-# 포트폴리오: Bun-Platform
+# 포트폴리오: 번개장터 백엔드 플랫폼
 
 <!-- TOC -->
 * [Philosophy: 왜 이 플랫폼을 만들었는가?](#philosophy-왜-이-플랫폼을-만들었는가)
@@ -17,6 +17,7 @@
       * [필드 레벨 암호화 SecretString](#필드-레벨-암호화-secretstring)
   * [서비스간 통신 방식 개선: bun-spring-starter-api-client-lib (개발중)](#서비스간-통신-방식-개선-bun-spring-starter-api-client-lib-개발중)
     * [ApiPayload](#apipayload)
+* [백엔드 E2E 테스트를 위한 여정](#백엔드-e2e-테스트를-위한-여정)
 * [Impact & Vision](#impact--vision)
 <!-- TOC -->
 
@@ -30,14 +31,14 @@
 - 신뢰할 수 없는 서비스 간 통신
 - 통합테스트의 부재와 비효율적인 테스트로 소스코드의 신뢰도를 보장하지 못함
 
-Bun-Platform은 이러한 문제들을 해결하기 위해 탄생했습니다.
-이 플랫폼의 핵심 철학은 **개발자의 인지적 부하를 최소화하고, 실수를 컴파일 타임에 방지하며, 모든 개발자가 재미있게 비즈니스 로직에만 집중할 수 있는 잘 닦인 고속도로를 제공하는 것** 입니다.
+이런 문제를 근본적으로 해결하기 위하여 비기능적인 소스코드를 라이브러리로 분리하면서 플랫폼을 구축하기 시작했습니다.
+플랫폼의 핵심 철학은 **개발자의 인지적 부하를 최소화하고, 실수를 컴파일 타임에 방지하며, 모든 개발자가 재미있게 비즈니스 로직에만 집중할 수 있는 잘 닦인 고속도로를 제공하는 것** 입니다.
 
 저는 이 비전을 실현하기 위해 API, 데이터, 이벤트, MSA 통신, 테스트 등 백엔드 개발의 전체 생명주기를 아우르는 플랫폼을 0에서 1로 직접 설계하고 구축했습니다.
 
 # Architecture: 플랫폼 구성 요소
 
-Bun-Platform은 각각 명확한 책임을 가진 spring-boot-starter 라이브러리 세트로 구성되어 있으며, bun-core-kotlin이라는 핵심 약속(Contract)을 공유합니다.
+번개장터 백엔드 플랫폼은 각각 명확한 책임을 가진 spring-boot-starter 라이브러리 세트로 구성되어 있으며, bun-core-kotlin이라는 핵심 약속(Contract)을 공유합니다.
 
 - bun-core-kotlin: 플랫폼의 헌법. AuthUser, BunContext 등 모든 라이브러리가 공유하는 핵심 추상화.
 - bun-spring-starter-api-lib: API 계층의 표준.
@@ -438,10 +439,61 @@ fun interface ApiPayload<REQUEST, CONTEXT> {
 또한 저의 사용 사례에선 오버로딩은 3개 이상 넘지 않기 때문에 이건 **오버엔지니어링** 이다. 라는 판단을 하게 되었습니다.
 따라서 기술적 순수함보다는 팀 전체의 명확성과 유지보수성을 우선하여, **더 단순하고 명시적인 두 개의 오버로딩된 메서드를 제공하는 현재의 방식을 최종적으로 선택했습니다.**
 
+# 백엔드 E2E 테스트를 위한 여정
+
+저는 위의 모든 플랫폼 작업을 **통합테스트 작성 장벽을 낮추고, 궁극적으로는 자동화된 E2E 회귀테스트를 구현**하기 위해 수행했습니다.
+제가 이전에 구축한 통합테스트 프레임워크는 퇴사 후에도 지속적으로 활용되고 있었으며, 재입사 후 **조직장으로부터 "통합테스트 덕분에 개발과 검증이 훨씬 수월해졌다"는 직접적인 피드백**을 받을 수 있었습니다.
+현재는 이 경험을 바탕으로 통합테스트 프레임워크를 한층 더 발전시켜 팀 전체에 확산하고 있습니다. 다음은 현재 사용 중인 테스트 코드의 일부입니다.
+
+```kotlin
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+abstract class IntegrationTest {
+
+    @Autowired
+    lateinit var userApi: UserApi
+
+    @LocalServerPort
+    var port: Int = 0
+
+    val client by lazy { ApiClient("http://localhost:$port") }
+
+    fun test(
+        token: UserToken? = null,
+        test: suspend Context.() -> Unit
+    ) = runBlocking {
+        val token = token ?: userApi.signUpRandom()
+        Context(token, client.withUser(token), coroutineContext).test()
+    }
+
+    fun UserApi.signUpRandom(
+        name: String = "user-${Random.nextLong(1, Int.MAX_VALUE.toLong())}",
+    ): UserToken = this.signUp(SignUpRequest(name = name))
+
+    class Context(
+        val user: UserToken,
+        val api: ApiClient,
+        override val coroutineContext: CoroutineContext,
+    ) : CoroutineScope
+}
+
+class AdRewardResourceTest : IntegrationTest() {
+    @Test
+    fun `광고 시청 및 보상 이력을 검색할 수 있다`() = test {
+        api.callApi()
+    }
+}
+```
+
+이 테스트 프레임워크를 통해 각 API 서버는 **자신의 비즈니스 로직을 검증하는 동시에 자동 생성된 API 클라이언트의 신뢰성까지 함께 보장**할 수 있습니다.
+더 나아가, **설정만으로 테스트 더블 사용 여부를 결정**할 수 있도록 구현 예정입니다. 목표는 설정 변경만으로 통합테스트를 E2E 테스트로 전환하기 위함입니다.
+**이러한 설정 기반 테스트 환경 전환이야말로 궁극의 E2E 테스트를 향한 핵심 기반**이라고 생각합니다.
+
 # Impact & Vision
 
 이 플랫폼은 현재 번개장터의 일부 팀에 적용되어 개발 생산성을 높이고 있으며, 조직의 공식적인 기술 자산으로 인정받았습니다.
 `event-publisher/subscriber` 와 같은 초기 모듈은 제가 필요해서 만들었지만, 제가 퇴사한 이후엔 거의 모든 팀이 사용하면서 수년간 조직의 핵심 인프라로 사용될 만큼 그 가치를 증명했습니다.
 
-저의 최종 목표는 이 플랫폼을 더욱 발전시켜, 신뢰성 있는 자동화 E2E 회귀 테스트를 가능하게 하는 것입니다.
-각 서비스가 자체 통합 테스트를 통해 api와 api client 를 원자적으로 증명하고, 이 **신뢰의 원자**들이 모여 전체 시스템의 안정성을 보장하는 것. 그것이 제가 그리는 기술적 비전입니다.
+저의 최종 목표는 이 플랫폼을 더욱 발전시켜, devops 와 개발자간의 소통 비용을 줄이고, 개발 속도 증가 및 버그 하락, 신뢰성 있는 자동화 E2E 회귀 테스트를 가능하게 하는 것입니다.
+각 서비스가 자체 통합 테스트를 통해 api와 api client 를 원자적으로 증명하고, 통합 테스트들이 모여 설정 변경만으로 E2E 테스트로 기동 하여 전체 시스템의 안정성을 보장하는 것.
+그것이 제가 그리는 기술적 비전입니다.
