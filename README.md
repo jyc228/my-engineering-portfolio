@@ -4,10 +4,10 @@
 * [Philosophy: 왜 이 플랫폼을 만들었는가?](#philosophy-왜-이-플랫폼을-만들었는가)
 * [Architecture: 플랫폼 구성 요소](#architecture-플랫폼-구성-요소)
 * [Key Features & Design Decisions](#key-features--design-decisions)
-  * [API 계층의 재정의: bun-spring-starter-api-lib](#api-계층의-재정의-bun-spring-starter-api-lib)
+  * [API 계층: bun-spring-starter-api-lib](#api-계층-bun-spring-starter-api-lib)
     * [페이징 모델 재정의](#페이징-모델-재정의)
     * [조직 표준 응답 데이터 모델 구조화](#조직-표준-응답-데이터-모델-구조화)
-  * [데이터 계층의 재정의: bun-spring-starter-data-lib](#데이터-계층의-재정의-bun-spring-starter-data-lib)
+  * [데이터 계층: bun-spring-starter-data-lib](#데이터-계층-bun-spring-starter-data-lib)
     * [데이터 저장소 일관된 설정 구조 제공](#데이터-저장소-일관된-설정-구조-제공)
     * [조직 표준 분산락 구현](#조직-표준-분산락-구현)
       * [CohortDistributedLock](#cohortdistributedlock)
@@ -48,9 +48,9 @@
 
 # Key Features & Design Decisions
 
-## API 계층의 재정의: bun-spring-starter-api-lib
+## API 계층: bun-spring-starter-api-lib
 
-이 프로젝트는 회사 api 서버에서 나오는 공통적인 문제를 해결합니다.
+이 프로젝트는 조직 api 서버 프로젝트 에서 나오는 공통적인 문제를 해결합니다.
 
 ### 페이징 모델 재정의
 
@@ -167,7 +167,7 @@ interface ApiErrorResult {
 모든 함수의 이름음 `toResult` 로 통합되어 있습니다. 결과적으로 프로젝트마다 일관된 api 응답 객체 생성을 유도할 수 있게 되었고,
 개발자는 프로젝트마다 표준 데이터 모델링을 안해도 되는 등, 개발 생산성과 인지 부하 감소, 잘못된 데이터 설정으로 인한 실수 원천 차단이 가능해졌습니다.
 
-## 데이터 계층의 재정의: bun-spring-starter-data-lib
+## 데이터 계층: bun-spring-starter-data-lib
 
 ### 데이터 저장소 일관된 설정 구조 제공
 
@@ -238,13 +238,12 @@ class CohortDistributedLock(
     private val local = InMemoryLock(...)
 
     override suspend fun <R> withLock(/*...*/) {
-        // 1. 먼저 서버 내부에서 '대표 스레드'를 선출 (Local Lock)
+        // 1. 먼저 서버 내부에서 '대표 코루틴'을 선출 (Local Lock)
         return local.withLock(...) {
-            // 2. 오직 대표 스레드만이 글로벌 분산 락 경쟁에 참여 (Global Lock)
+            // 2. 오직 대표 코루틴만이 글로벌 분산 락 경쟁에 참여 (Global Lock)
             global.withLock(...)
         }
     }
-
 }
 ```
 
