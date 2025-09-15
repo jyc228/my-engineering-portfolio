@@ -31,7 +31,7 @@ zktrie 는 바이너리 트리 이므로 자식노드 개수도 적고, 미들 �
 
 ```go
 type TreeNode interface {
-	Hash() *zkt.Hash
+	Hash() [32]byte
 
 	// CanonicalValue returns the byte form of a node required to be persisted, and strip unnecessary fields
 	// from the encoding (current only KeyPreimage for Leaf node) to keep a minimum size for content being
@@ -45,7 +45,7 @@ type HashNode [32]byte
 type MiddleNode struct {
 	childL TreeNode 
 	childR TreeNode
-	hash   *zkt.Hash
+	hash   [32]byte
 }
 
 type LeafNode struct { ... }
