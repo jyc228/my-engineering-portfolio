@@ -85,7 +85,8 @@ disk io, 블록 생성 속도 등 모든 지표에서 우월함이 증명되었�
 
 버그의 원인은 **깊이 1의 노드를 삭제할 때 발생하는 로직 결함**으로 밝혀졌습니다.
 이 장애를 해결하는 과정에서 저희 팀은 실패를 투명하게 공유하고 함께 배우는 문화를 바탕으로, 모든 팀원이 참여하여 원인을 분석하고 재발 방지 대책을 수립했습니다. 당시의 치열했던 고민과 기술적 분석을 담은 **저희 팀의 공식 사후 분석 보고서(Post-Mortem)** 는 아래 링크에서 확인하시거나, 링크 유실을 대비하여 제일 아래에 별도 첨부 하였습니다.
-https://github.com/kroma-network/kroma/blob/acd78a9bafb79ba1b34b1d1d9b4ad8f96b31dea3/postmortems/2024-03-12-zktrie-hardfork.md
+
+[zktrie hardfork postmortems](https://github.com/kroma-network/kroma/blob/acd78a9bafb79ba1b34b1d1d9b4ad8f96b31dea3/postmortems/2024-03-12-zktrie-hardfork.md)
 
 수정후 재 적용할땐 훨씬 조심스럽게 적용했습니다. 문제가 없다고 판단이 되자, 시퀀서에도 적용을 했고 차후 다른 zktrie 기반 체인들은 성능 저하 문제를 겪을때, 우리는 아무런 문제도 없게 되었습니다.
 
