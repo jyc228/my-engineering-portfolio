@@ -25,7 +25,7 @@
 - commit 단계 부재 -> write, delete 할 때 마다 커밋 하는것과 비슷한 효과가 발생. 이더리움에선 write, delete 는 매우 가벼워야 하는데 플랫폼과 맞지 않음.
 
 zktrie 는 바이너리 트리 이므로 자식노드 개수도 적고, 미들 노드의 깊이도 훨씬 길어지므로, write, delete 연산이 여러번 있을 경우, 중복된 경로가 발생할 확률이 월등히 높아졌습니다.
-이러한 구조로 인하여 tps 가 낮거나, db 에 데이터가 쌓이면 쌓일수록 체인이 받는 부하가 월등히 높아질 있다고 저는 예견했습니다.
+이러한 구조로 인하여 tps 가 높거나, tps 가 낮아도 db 에 데이터가 누적될수록 (평균 트리 depth 증가) 체인이 받는 부하가 월등히 높아질 있다고 저는 예견했습니다.
 
 핵심 개선사항은 child node 를 인터페이스로 바꾸고, hash 계산을 commit 할때만 하는것입니다.
 
@@ -83,7 +83,9 @@ disk io, 블록 생성 속도 등 모든 지표에서 우월함이 증명되었�
 제가 만든 트리를 적용한 패치 때문에 db 가 오염됐을 가능성을 배제할 수 없었고, 조직에서 운영중인 모든 노드는 업그레이드를 한 상태였기 때문에 **업그레이드를 하지 않은 파트너사의 DB로 교체하여 재기동하자**고 제안하여 긴급 대응을 주도했습니다.
 여기까지 약 3시간 소요되었으며 이 이후부턴 팀원들과 같이 모니터링, 원인분석을 하면서 체인을 정상화 할 수 있도록 노력했습니다. 약 18시간 후 다행히 체인은 정상화 되었습니다.
 
-버그의 원인은 **트리 노드의 얕은 복사로 인한 멀티 스레드 간 데이터 동기화 문제**로 밝혀졌습니다.
+버그의 원인은 **깊이 1의 노드를 삭제할 때 발생하는 로직 결함**으로 밝혀졌습니다.
+이 장애를 해결하는 과정에서 저희 팀은 실패를 투명하게 공유하고 함께 배우는 문화를 바탕으로, 모든 팀원이 참여하여 원인을 분석하고 재발 방지 대책을 수립했습니다. 당시의 치열했던 고민과 기술적 분석을 담은 **저희 팀의 공식 사후 분석 보고서(Post-Mortem)** 는 아래 링크에서 확인하시거나, 링크 유실을 대비하여 제일 아래에 별도 첨부 하였습니다.
+https://github.com/kroma-network/kroma/blob/acd78a9bafb79ba1b34b1d1d9b4ad8f96b31dea3/postmortems/2024-03-12-zktrie-hardfork.md
 
 수정후 재 적용할땐 훨씬 조심스럽게 적용했습니다. 문제가 없다고 판단이 되자, 시퀀서에도 적용을 했고 차후 다른 zktrie 기반 체인들은 성능 저하 문제를 겪을때, 우리는 아무런 문제도 없게 되었습니다.
 
@@ -98,3 +100,96 @@ disk io, 블록 생성 속도 등 모든 지표에서 우월함이 증명되었�
 
 이런 의견까지 더해져서 결국 조직은 db 마이그레이션을 하기로 결정했습니다.
 그리고 저는 마이그레이션 전략, 기반 코드를 작성해서 팀원에게 전달 했고, 중간중간 구현 방향을 가이드 했습니다. 그 팀원은 이더리움에 성공적으로 병합하여 최종적으로 마이그레이션에 성공했습니다.
+
+## 참고 pr
+- tree 구현 : https://github.com/kroma-network/go-ethereum/pull/45
+- tree 버그 수정 : https://github.com/kroma-network/go-ethereum/pull/81
+- snap sync 구현 : https://github.com/kroma-network/go-ethereum/pull/19
+
+## 별첨
+
+### 2024-03-12 Chain Halt due to ZKTrie Upgrade Post-Mortem
+
+# Incident Summary
+
+On March 12, 2024, at 15:16:25 UTC, a fork occurred at block number [8171899](https://kromascan.com/block/8171899).
+
+Some nodes encountered a `BAD BLOCK` error due to a hash discrepancy in that block compared to the block hash of the 
+sequencer. This discrepancy was caused by a bug introduced in `KromaZKTrie` in kroma-geth 
+[`v0.4.4`](https://github.com/kroma-network/go-ethereum/releases/tag/v0.4.4).
+
+Since the sequencer was using kroma-geth `v0.4.4`, it was recovered by rollback using the chain data of nodes running 
+kroma-geth [`v0.4.3`](https://github.com/kroma-network/go-ethereum/releases/tag/v0.4.3).
+
+Block generation was halted for about 7 and a half hours due to this issue, and it took 2 more hours for the chain to be
+normalized.
+
+# Background
+
+On Thu, Mar 07, 2024, at 05:00:00 UTC, an upgrade to kroma 
+[`v1.3.2`](https://github.com/kroma-network/kroma/releases/tag/v1.3.2) and kroma-geth `v0.4.4` was conducted to enhance 
+ZKTrie, which is to store the state of accounts and storage. The upgrade was first tested on the internal devnet and 
+Kroma sepolia to validate backward compatibility before being applied to the Kroma mainnet. Nodes with the improved 
+ZKTrie were also tested by syncing the canonical chain from the genesis block to approximately 7 million blocks to 
+ensure proper functionality. The ZKTrie has also been audited by [Chainlight](https://github.com/kroma-network/go-ethereum/blob/main/docs/audits/2024-02-23_KromaZKTrie_Security_Audit_ChainLight.pdf).
+
+# Causes
+
+There was a bug in the process of deleting nodes in the `KromaZKTrie`. When deleting a node with a depth of 1, the node 
+should be removed, leaving an empty node. However, in this case, after deleting the node, another child node was 
+mistakenly set as the root node, altering the state tree and resulting in a different state root value.
+
+![zktrie-deletion.svg](assets/zktrie-deletion.svg)
+
+This issue is first discovered when executing a specific transaction. As a result of execution of the 
+[transaction](https://kromascan.com/tx/0x50580775422fee57c8ec78dce4a3598e2246c12d7a73756f874dd117bed0ad72), the 
+structure of the tree changed, leading to the calculation of different state roots and thus causing a fork with 
+different block hashes.
+
+# Recovery
+
+Nodes running kroma-geth `v0.4.3` had the correct state root. Therefore, the chain was rolled back using the chain data 
+of these nodes. All nodes, including the sequencer, were downgraded to kroma `v1.3.1` and kroma-geth `v0.4.3` to 
+continue generating correct blocks.
+
+## Timeline (UTC)
+
+- 2024-03-12 0616: fork occurred at 8171899
+- 2024-03-12 0619: received alerts from some RPC nodes about discrepancies of latest block
+- 2024-03-12 0620: started investigating the fork
+- 2024-03-12 0649: announced fork occurrence on discord
+- 2024-03-12 0814: requested canonical chain snapshot data from Wemade
+- 2024-03-12 0907: announced rollback of Kroma mainnet on discord
+- 2024-03-12 0942: set up a new sequencer using the snapshot data provided by Wemade
+- 2024-03-12 0949: Chainlight notified
+- 2024-03-12 1329: announced that the recovery of Kroma mainnet is on going on discord
+- 2024-03-12 1348: restarted a new sequencer
+- 2024-03-12 1521: provided rollback snapshot and instructions to security council members
+- 2024-03-12 1533: provided rollback snapshot and instructions to etherscan
+- 2024-03-12 1548: announced the recovery of Kroma mainnet (RPC, P2P, validator) on discord
+- 2024-03-13 0441: found a bug in `KromaZKTrie` and proposed workaround by Chainlight
+- 2024-03-13 1212: completed test of rollback for node operators
+- 2024-03-13 1239: provided rollback snapshot and instructions on discord
+- 2024-03-14 0626: opened PR to fix a bug in `KromaZKTrie`
+
+# How it is fixed
+
+The logic for deleting node with a depth of 1 was modified to ensure proper deletion. This was achieved by removing a 
+separate case handling for depth 1 that caused incorrect deletion.
+
+Related PR: https://github.com/kroma-network/go-ethereum/pull/81
+
+# Lessons learned
+
+## No tests for deletion
+
+The absence of tests for node deletion made it impossible to prevent this issue in advance. In the future, more tests 
+will be implemented to thoroughly examine the functionality of all functions, thereby preventing such issues in advance.
+
+# Future plan
+
+The bug will be fixed in this [PR](https://github.com/kroma-network/go-ethereum/pull/81), and once merged, it will 
+undergo sufficient test on the internal devnet and Kroma sepolia. Additionally, we will re-execute the problematic 
+transaction using the `KromaZKTrie` and see if it results in the correct state root. Once all tests are completed, it 
+will be applied to the Kroma mainnet, and relevant instructions will be provided via 
+[kroma-up](https://github.com/kroma-network/kroma-up).
