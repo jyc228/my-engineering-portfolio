@@ -16,6 +16,46 @@
 - 코드 리팩토링: 도메인, 기능, 비기능 코드로 레이어를 명확히 분리하여 코드의 가독성과 유지보수성을 확보했습니다.
 - 호출 구조 변경: 직렬 처리 방식에서 병렬, 경쟁 기반의 광고 호출 구조로 변경하여 응답 시간의 기반을 개선했습니다.
 
+**before**
+```kotlin
+suspend fun getAds() {
+    // 조회 실패시 기존 요청을 취소하고 후순위 광고 조회 시도합니다.
+    // 전체 타임아웃이 존재합니다. (약 2초)
+    for (provider in adProviders) {
+        try {
+            // 구현체에서 webclient 를 사용중이며 timeout 350ms 적용되어 있음
+            return provider.fetchAds()
+        } catch (e: Throwable) {
+        }
+    }
+    return null
+}
+```
+**after**
+```kotlin
+suspend fun getAds() {
+    // 일정 간격으로 후수위 광고를 조회 하며 (폭포수 미디에이션), 기존 호출을 취소하지 않고 먼저 도착한 광고를 응답합니다.
+    // 전체 타임아웃이 존재합니다. (약 2초)
+    val resultChannel = Channel()
+    val requestJob = launch {
+        for (provider in adProviders) {
+            val job = launch {
+                try {
+                    resultChannel.send(provider.fetchAds())
+                } catch (e: Throwable) {
+                }
+            }
+            // 선순위 광고사의 광고가 먼저 나갈 수 있도록 요청 완료까지 일정 시간 대기 합니다.
+            withTimeoutOrNull(provider.timeout) { job.join() }
+        }
+    }
+    return select {
+        resultChannel.onReceive { it }
+        requestJob.onJoin { null } // 모든 광고 제공자들로부터 광고 조회 실패
+    }.also { resultChannel.close(); requestJob.close() }
+}
+```
+
 ### 2단계: 비효율 제거 (성능 최적화)
 불필요한 네트워크 호출을 제거하여 즉각적인 성능 향상과 비용 절감을 달성했습니다.
 
