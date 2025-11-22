@@ -28,6 +28,15 @@ TPS 10을 견디지 못하고 6시간 동안 중단되었던 블록체인 시스
 
 &raquo; **[블록체인 코어 트리 최적화](./blockchain.md)**
 
+
+## Personal Projects
+
+### 1. ethereum client sdk 설계
+
+타입 안정적이며, 비동기 배치(Batch) 처리와 코루틴을 활용한 고성능 클라이언트를 제작했습니다. DX 와 성능, 둘 다 확보하려고 노력했고 그 결실을 맺었습니다.
+
+&raquo; **[keth-client](keth-client.md)**
+
 ## Contact
 
 - **Email**: dudcjf89@gmail.com
