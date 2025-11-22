@@ -37,6 +37,13 @@ TPS 10을 견디지 못하고 6시간 동안 중단되었던 블록체인 시스
 
 &raquo; **[keth-client](keth-client.md)**
 
+### 2. kotlin ethereum 구현
+
+go-ethereum 을 이해하기 위하여 시작한 R&D 프로젝트 입니다. `EVM`, `StateDB`, `Trie` 등 블록체인의 핵심 코어 로직을 Kotlin으로 밑바닥부터 재설계 및 구현했습니다. 
+이 과정에서 체득한 로우레벨(Low-level) 동작 원리에 대한 깊은 이해는, 실무에서 블록체인 코어를 최적화하여 성능을 1000% 향상시키는 결정적인 기반이 되었습니다.
+
+&raquo; **[keth](keth.md)**
+
 ## Contact
 
 - **Email**: dudcjf89@gmail.com
