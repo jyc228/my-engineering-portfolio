@@ -44,6 +44,13 @@ go-ethereum 을 이해하기 위하여 시작한 R&D 프로젝트 입니다. `EV
 
 &raquo; **[keth](keth.md)**
 
+### 3. IntelliJ ethereum plugin 구현
+
+위 2개 개인 프로젝트를 진행하면서 근본적인 이더리움 개발 환경을 극복하고 싶어졌습니다. 
+지금까지 익힌 지식과, 소스코드를 모두 사용하여 월 만원 수준의 이더리움 통합 개발환경을 만들려고 시도했던 프로젝트 입니다. 
+
+&raquo; **[intellij-ethereum-plugin.md](intellij-ethereum-plugin.md)**
+
 ## Contact
 
 - **Email**: dudcjf89@gmail.com
