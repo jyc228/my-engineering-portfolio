@@ -131,8 +131,8 @@ interface ManagedStateAccount : StateAccount {
 `geth` 는 opcode 의 주요 파트마다 전부 파일이 분리되어 있습니다 (`instructions.go`, `jump_table.go`, `memory_table.go`, `gas_table.go`).
 매우 표준적인 구조이지만, 저는 이 구조가 파악 및 유지보수를 매우 어렵게 한다고 생각했습니다.
 
-Kotlin DSL을 활용하여, EVM Opcode의 명세(가스비, 스택 조작, 메모리 확장)를 선언적(Declarative) 코드로 구현했습니다.
-이는 복잡한 Switch-Case 로직을 '실행 가능한 문서(Executable Specification)' 형태로 승화시켜, 코드의 가독성과 안정성을 획기적으로 높였습니다.
+Kotlin DSL을 활용하여, EVM Opcode의 명세(가스비, 스택 조작, 메모리 확장)를 선언적 코드로 구현했습니다.
+이는 복잡한 Switch-Case 로직을 '실행 가능한 문서' 형태로 승화시켜, 코드의 가독성과 안정성을 획기적으로 높였습니다.
 
 ```kotlin
 fun OperationBuilder.withOpCode(opCode: OpCode): OperationBuilder {
@@ -153,7 +153,7 @@ fun OperationBuilder.withOpCode(opCode: OpCode): OperationBuilder {
 ```
 
 그 후 인터프리터를 클론 코딩 했습니다. `geth` 의 인터프리터 확장 방식은 코어 소스 코드를 오염시키면서 하고 있었습니다. 저는 핵심 로직과 확장 로직을 분리하기 위하여
-저는 **위임(Delegation)** 을 통해 이를 분리하여, 코어의 순수성을 지키면서도 기능을 유연하게 확장할 수 있는 구조를 만들었습니다.
+저는 **위임** 을 통해 이를 분리하여, 코어의 순수성을 지키면서도 기능을 유연하게 확장할 수 있는 구조를 만들었습니다.
 
 ```kotlin
 open class EVMInterpreter(private val instructionSet: InstructionSet) {
