@@ -32,6 +32,9 @@
 
 ## 아키텍쳐
 
+아래 플로우 차트가 보이지 않으시다면 깃허브에서 봐주세요.
+[link](https://github.com/jyc228/my-engineering-portfolio/blob/main/bunjang/keyword-policy.md#%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90)
+
 ```mermaid
 flowchart
     각종_서비스 -- 금지어 탐지, 금지어 마스킹 --> 정책_구문_그룹 -- 로깅 --> keyword_policy_server

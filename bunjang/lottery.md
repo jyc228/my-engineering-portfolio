@@ -14,7 +14,10 @@
     - 회차별 복권 96만개
 - 실시간 당첨 현황 (1등, 2등, 3등 등등..) 제공
 
-## 아키텍쳐 
+## 아키텍쳐
+
+아래 플로우 차트가 보이지 않으시다면 깃허브에서 봐주세요.
+[link](https://github.com/jyc228/my-engineering-portfolio/blob/main/bunjang/lottery.md#%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90)
 
 ```mermaid
 flowchart
