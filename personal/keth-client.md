@@ -125,7 +125,7 @@ fun test2() {
 이렇게 탄생된 라이브러리는 기존 jvm ethereum 보다 훨씬 사용하기 편했으며,
 이는 차후 intellij ethereum plugin 개발시, 개발 난이도 및 성능 최적화에 직접적인 영향을 주게 되었습니다.
 그와 별개로, 개인적으로도 그래들 플러그인, 코드 생성기 등 평상시엔 접하기 힘든 다양한 경험을 해 볼 수 있었고,
-이것은 [bun-platform.md](../bunjang/bun-platform.md) 작업할때 직접적인 도움이 되었습니다.
+이것은 [bun-platform.md](../bunjang/platform.md) 작업할때 직접적인 도움이 되었습니다.
 
 ### 부록
 
