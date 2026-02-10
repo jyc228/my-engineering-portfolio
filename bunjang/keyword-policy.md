@@ -82,7 +82,7 @@ internal sealed interface PhraseMatcher {
         // hashcode를 활용하여 O(1) 연산으로 처리합니다. if (text in idByPattern)
         fun exact(idByPattern: Map<String, Int>): PhraseMatcher = ExactPhraseMatcher(idByPattern)
 
-        // 아호코라식을 활용하여 O(n) 연산으로 처리합니다.
+        // 아호코라식을 활용하여 O(n) 연산으로 처리합니다. n = text 길이
         fun contain(patternById: Map<Int, String>): PhraseMatcher = ContainPhraseMatcher(patternById)
 
         // 정규식 for
