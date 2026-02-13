@@ -6,6 +6,7 @@
 * [jpa 타입 확장](#jpa-타입-확장)
   * [상황별 최적화를 제공하는 EnumColumn 시스템](#상황별-최적화를-제공하는-enumcolumn-시스템)
   * [필드 레벨 암호화 SecretString](#필드-레벨-암호화-secretstring)
+* [동일한 요소를 가지는 Enum 변환](#동일한-요소를-가지는-enum-변환)
 <!-- TOC -->
 
 # 데이터 저장소 일관된 설정 구조 제공
@@ -208,3 +209,57 @@ sealed interface SecretString {
 
 서비스 로직 개발자는 암호화의 존재 자체를 신경 쓸 필요가 없습니다. SecretString 타입을 필드로 선언하는 순간,
 플랫폼이 JPA 계층에서 모든 암복호화 과정을 투명하게 처리합니다. 이는 개발자의 실수를 원천 차단하고 조직의 보안 표준을 코드로 강제하는 저의 플랫폼 설계 철학을 명확히 보여줍니다.
+
+# 동일한 요소를 가지는 Enum 변환
+
+***Problem***
+
+계층간 `Enum` 을 분리하게 될 경우, 필연적으로 비슷한 종류의 `Enum` 클래스가 여러개 생겨나게 됩니다.
+
+제가 지금까지 봐온 대부분의 코드들은 나눠야 한다라는 생각을 아얘 안하는 경우였습니다. `JsonIgnore` 같은 메타 어노테이션이 적용되어 있으며,
+프로젝트 전역적으로 사용되고 있기 때문에 사용처, 용도, 스펙화 등 유지보수를 매우 어렵게 만들고 있다고 생각해왔습니다.
+
+또한 계층별 `Enum` 을 추가하더라도, `when else` 를 쓰는 코드들이 있거나 (컴파일 타임 안정성 포기), `exhaustive when` 으로 풀 전개 하는 경우 였습니다.
+
+`exhaustive when` 은 컴파일 타임 안정성은 훌륭하고, 코드가 적을경우는 괜찮다고 생각하지만 코드가 많아질수록 유지보수를 어렵게 하고,
+테스트가 생략되는 경우가 자주 있으며, 개발자가 수동으로 직접 연결하기 때문에 실수할 가능성이 있다. 라는 사실은 변함이 없었습니다.
+
+***Solution***
+
+`Enum` 간 변환을 쉽게 등록하고 관리할 수 있는 추상 클래스를 제공합니다. 이 클래스를 확장하여 원하는 변환 규칙을 쉽게 등록하고, 편하게 사용할 수 있습니다.
+또한 `Bean` 으로 등록시, `Spring Startup` 시점에 `Kotlin Reflection`을 활용하여 모든 매핑 함수의 정합성(부분집합 여부)을 전수 검사합니다.
+이를 통해 휴먼 에러로 인한 런타임 익셉션을 배포 전 단계에서 원천 차단합니다.
+
+```kotlin
+/**
+ * 동일한 요소를 가지는 Enum 클래스간 변환을 도와주는 유틸성 클래스 입니다.
+ *
+ * 이 기능은 계층간 Enum 클래스를 독립적으로 두게 되면 필연적으로 발생하는 동일한 요소를 가지는 Enum을 처리하기 위해 구현되었습니다.
+ *
+ * 이 클래스를 object class 에서 상속 받은 후, 변환 함수를 등록하시면 됩니다.
+ *
+ * 상속 받은 클래스를 spring bean 으로 등록시킬 경우, startup 시 유효성 검사를 합니다.
+ *
+ * ## 제약 조건
+ * - 함수 이름 : enumOf, convert 만 가능
+ * - 한 클래스에 동일한 input 을 받는 변환 함수 등록 불가능
+ * - A -> B 로 변환 시, 원칙적으로 A 는 B 의 부분집합이어야 합니다. (A ⊆ B)
+ * - 단, A 에는 존재하나 B 에는 없는 필드의 경우, 명시적으로 처리를 해야 합니다. 이 경우 결과 타입은 nullable이 됩니다.
+ */
+abstract class AbstractEnumMapping {
+    fun throwIfInvalid() {
+        // ... 구현
+    }
+}
+
+// 예제.. 원본 코드에선 AbstractEnumMapping 주석에 이 코드가 포함되어 있습니다.
+object EnumMapping : AbstractEnumMapping() {
+    fun EnumA.convert() = this<EnumB>()
+    fun enumOf(enum: EnumB) = enum<EnumA>()
+    fun enumOf(enum: EnumB) = enum<EnumA>("UNKNOWN") // 지원 안하는 enum 필드 명시
+}
+
+fun test(enum: EnumA): EnumB {
+    return enum.convert()
+}
+```
