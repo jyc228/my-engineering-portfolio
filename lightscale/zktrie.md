@@ -6,6 +6,7 @@
 - 인원: 2명
 - 핵심 기술: golang
 - 주요 역할: 설계, 개발, 지식 전파
+- 상위 문서: [maintenance.md](maintenance.md)
 
 ## 배경 & 도전
 
