@@ -62,7 +62,7 @@ interface MerkleTree {
 #### zktrie 최적화
 
 이때 얻은 지식 덕분에 조직에서 쓰던 `zktrie (trie 구현체 중 하나, mpt 사용 안했었습니다.)` 에 구조적 병목을 발견하고 최적화 하는 결정적 통찰을 제공했습니다.
-그 후로 `zktrie` 를 개선하는 작업에 착수 했습니다. 이와 관련된 이야기는 [blockchain.md](../lightscale/blockchain.md) 에 상세히 적었습니다.
+그 후로 `zktrie` 를 개선하는 작업에 착수 했습니다. 이와 관련된 이야기는 [blockchain.md](../lightscale/zktrie.md) 에 상세히 적었습니다.
 
 ### mid level : state database
 
