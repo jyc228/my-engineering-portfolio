@@ -45,3 +45,20 @@
 
 - **핵심 성과**: 조직의 기술 수준 상향
 - **키워드**: `golang`, `오픈소스 업스트림`
+
+## 개인 프로젝트
+
+### [Kotlin Ethereum rpc client](personal/keth-client.md)
+
+- **핵심 성과**: Batch Request DSL과 독자적인 Code Generator를 직접 설계하여, 압도적인 성능과 개발자 경험(DX)을 모두 잡은 SDK 구축
+- **키워드**: `Kotlin`, `라이브러리`
+
+### [kotlin Ethereum](personal/keth.md)
+
+- **핵심 성과**: Go-Ethereum 코어를 Kotlin으로 밑바닥부터 재구현하며 EVM(가상머신)과 StateDB의 로우레벨 동작 원리를 완벽히 내재화
+- **키워드**: `Kotlin`, `가상머신`
+
+### [IntelliJ Ethereum Plugin](personal/intellij-ethereum-plugin.md)
+
+- **핵심 성과**: IntelliJ VirtualFileSystem(VFS)을 확장하여, 컨텍스트 스위칭을 없앤 IDE 내장형 블록체인 탐색기 및 로컬 환경 구축
+- **키워드**: `Kotlin`, `Plugin`
