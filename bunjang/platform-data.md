@@ -1,12 +1,14 @@
 <!-- TOC -->
+
 * [데이터 저장소 일관된 설정 구조 제공](#데이터-저장소-일관된-설정-구조-제공)
 * [조직 표준 분산락 구현](#조직-표준-분산락-구현)
-  * [CohortDistributedLock](#cohortdistributedlock)
+    * [CohortDistributedLock: Redis 부하를 1/N로 줄이는 아키텍처](#cohortdistributedlock-redis-부하를-1n로-줄이는-아키텍처)
 * [querydsl 확장](#querydsl-확장)
 * [jpa 타입 확장](#jpa-타입-확장)
-  * [상황별 최적화를 제공하는 EnumColumn 시스템](#상황별-최적화를-제공하는-enumcolumn-시스템)
-  * [필드 레벨 암호화 SecretString](#필드-레벨-암호화-secretstring)
+    * [상황별 최적화를 제공하는 EnumColumn 시스템](#상황별-최적화를-제공하는-enumcolumn-시스템)
+    * [필드 레벨 암호화 SecretString](#필드-레벨-암호화-secretstring)
 * [동일한 요소를 가지는 Enum 변환](#동일한-요소를-가지는-enum-변환)
+
 <!-- TOC -->
 
 # 데이터 저장소 일관된 설정 구조 제공
@@ -62,17 +64,25 @@ annotation class EnablePrimaryDataSource(val dataSource: KClass<out BunDataSourc
 이 문제를 해결하기 위해, 먼저 실제 분산 락처럼 동작하지만 메모리 내에서만 비동기적으로 작동하는 정교한 테스트 더블(Test Double)인 `InMemoryLock`을 직접 구현했습니다.
 또한 서버 실행시 실행 환경, 런타임 클래스 여부 등을 판단하여 적합한 분산락 인스턴스를 (spin, pub/sub, inmemory) 자동으로 선택하도록 구성했습니다.
 
-이 단순한 `InMemoryLock`을 만들고 보니, 이것을 활용하여 분산 시스템의 더 근본적인 문제인 **Thundering Herd**를 해결할 수 있다는 통찰을 얻게 되었습니다.
+이 단순한 `InMemoryLock`을 만들고 보니, 이것을 활용하여 분산 시스템의 더 근본적인 문제인 **Thundering Herd(경쟁 폭주)**를 해결할 수 있다는 통찰을 얻게 되었습니다.
 
-## CohortDistributedLock
+## CohortDistributedLock: Redis 부하를 1/N로 줄이는 아키텍처
 
-제가 만든 `InMemoryLock` 을 **로컬 락**으로 활용하여 이 문제를 해결했습니다.
-먼저 각 서버 내부에서 로컬 락으로 **대표**를 단 하나만 선출하고, 오직 이 소수의 대표들만이 실제 **글로벌 분산 락** 경쟁에 참여하도록 설계했습니다.
-만들고 나니 이게 `락 코호팅`이라는걸 알게 되었고 클래스 이름을 `CohortDistributedLock` 라고 부여하게 되었습니다.
+분산 락을 사용하는 고경쟁 상황에서 발생하는 경쟁 폭주 문제를 해결하기 위해, 테스트용으로 개발했던 `InMemoryLock`을 로컬 락으로 재활용한 `2-Tier 락` 구조를 설계했습니다.
+
+1. 대표 선출: 코루틴의 `경량 스레드` 특성을 활용한 방법으로, 각 서버 내부에서 락 획득 요청을 `InMemoryLock`으로 줄 세웁니다. 스레드의 개수보다 훨씬 많은 코루틴을 대기시킵니다.
+2. 글로벌 경쟁: 로컬에서 선출된 단 한 명의 대표 코루틴만이 실제 글로벌 분산 락(`Redis`) 경쟁에 참여합니다.
+
+예상되는 효과로 `Redis`가 받는 부하를 전체 요청 수에서 서버 인스턴스 개수 수준으로 극적으로 절감하여, 시스템의 수평적 확장성을 극대화 할 수 있게 되었습니다.
+
+또한 설계 과정에서 로컬 락과 글로벌 락을 이중으로 거치며 락 획득의 **불공정성**이 심화될 수 있음을 인지했습니다.
+그러나 인터페이스 정의 부터가 불공정락을 위한것이었으므로, 문제가 된다고 생각하지 않았습니다.
+
+(사후에 이 방식이 전산학적으로 `락 코호팅`이라 불리는 기법임을 알게 되어 명칭을 부여했습니다.)
 
 ```Kotlin
 class CohortDistributedLock(
-    private val global: DistributedLock, // 실제 분산 락 (예: Redis)
+    private val global: DistributedLock, // 실제 분산 락 (예: Redis), 레디슨의 pub / sub 락도 가능합니다.
 ) : DistributedLock {
     // 테스트를 위해 만들었던 InMemoryLock을 '로컬 락'으로 재활용
     private val local = InMemoryLock()
@@ -86,9 +96,6 @@ class CohortDistributedLock(
     }
 }
 ```
-
-이 이야기는 제가 어떻게 단순한 테스트 도구를 만드는 과정에서 시스템 전체의 안정성을 높이는 새로운 아키텍처의 영감을 얻고, 그것을 직접 설계하고 구현할 수 있는지를 보여주는 가장 대표적인 사례입니다.
-이는 특정 기술의 지식을 넘어, 근본 원리에서부터 생각하고 해결책을 창조하는 저의 문제 해결 방식을 증명합니다.
 
 # querydsl 확장
 
