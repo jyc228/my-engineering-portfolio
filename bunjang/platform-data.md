@@ -66,19 +66,15 @@ annotation class EnablePrimaryDataSource(val dataSource: KClass<out BunDataSourc
 
 이 단순한 `InMemoryLock`을 만들고 보니, 이것을 활용하여 분산 시스템의 더 근본적인 문제인 **Thundering Herd(경쟁 폭주)**를 해결할 수 있다는 통찰을 얻게 되었습니다.
 
-## CohortDistributedLock: Redis 부하를 1/N로 줄이는 아키텍처
+## 부록: InMemoryLock에서 출발한 락 코호팅 재발견
 
-분산 락을 사용하는 고경쟁 상황에서 발생하는 경쟁 폭주 문제를 해결하기 위해, 테스트용으로 개발했던 `InMemoryLock`을 로컬 락으로 재활용한 `2-Tier 락` 구조를 설계했습니다.
+테스트 더블로 개발한 `InMemoryLock`을 로컬 락으로 재활용하면,
+각 서버 내부에서 대표 코루틴을 선출하고, 대표만 글로벌 분산 락(Redis) 경쟁에 참여하는 `2-Tier 락` 구조를 만들 수 있음을 발견했습니다.
 
-1. 대표 선출: 코루틴의 `경량 스레드` 특성을 활용한 방법으로, 각 서버 내부에서 락 획득 요청을 `InMemoryLock`으로 줄 세웁니다. 스레드의 개수보다 훨씬 많은 코루틴을 대기시킵니다.
-2. 글로벌 경쟁: 로컬에서 선출된 단 한 명의 대표 코루틴만이 실제 글로벌 분산 락(`Redis`) 경쟁에 참여합니다.
+이론적으로 Redis 부하를 전체 요청 수에서 서버 인스턴스 개수 수준으로 줄일 수 있으나, 실무에서는 이 구조가 필요한 고경쟁 상황 자체가 대기열이나 원자적 연산으로
+해결하는 것이 더 적절하다고 판단하고 있습니다.
 
-예상되는 효과로 `Redis`가 받는 부하를 전체 요청 수에서 서버 인스턴스 개수 수준으로 극적으로 절감하여, 시스템의 수평적 확장성을 극대화 할 수 있게 되었습니다.
-
-또한 설계 과정에서 로컬 락과 글로벌 락을 이중으로 거치며 락 획득의 **불공정성**이 심화될 수 있음을 인지했습니다.
-그러나 인터페이스 정의 부터가 불공정락을 위한것이었으므로, 문제가 된다고 생각하지 않았습니다.
-
-(사후에 이 방식이 전산학적으로 `락 코호팅`이라 불리는 기법임을 알게 되어 명칭을 부여했습니다.)
+다만, 테스트 인프라를 만드는 과정에서 전산학적으로 `락 코호팅`이라 불리는 기법을 독립적으로 재발견한 경험은, 저의 문제 해결 사고 방식을 보여주는 사례라고 생각합니다.
 
 ```Kotlin
 class CohortDistributedLock(
@@ -106,7 +102,7 @@ Querydsl은 강력하지만, JPAQueryFactory 주입, Q-Class import, selectFrom 
 
 ***Solution***
 
-Kotlin의 확장 함수와 람다를 활용하여, 개발자가 마치 새로운 언어(DSL)를 쓰듯이 간결하고 타입-세이프하게 Querydsl 쿼리를 작성할 수 있는 `BunQuerydslExtension`을 직접 창조했습니다.
+Kotlin의 확장 함수와 람다를 활용하여, 개발자가 마치 새로운 언어(DSL)를 쓰듯이 간결하고 타입-세이프하게 Querydsl 쿼리를 작성할 수 있는 `BunQuerydslExtension`을 설계했습니다.
 
 ```kotlin
 interface UserRepository : JpaRepository<User, Long>, BunQuerydslExtension<User, QUser, Long>

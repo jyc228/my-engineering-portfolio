@@ -44,7 +44,7 @@ sealed interface EnumProperty<E : Enum<out E>> {
 ```
 
 특히 import 없는 enum 을 구현하기 위해, enum 대신 `value class`를 사용하고 `companion object`와 스코프 함수를 조합하여,
-개발자가 마치 원래 언어의 일부인 것처럼 자연스럽게 코드를 작성할 수 있는 새로운 DSL(도메인 특화 언어)을 창조했습니다.
+개발자가 마치 원래 언어의 일부인 것처럼 자연스럽게 코드를 작성할 수 있도록 설계 했습니다.
 
 저는 이 라이브러리를 통해 api 제공자는 api-client 도 함께 제공할 의무를 가지도록 강제하고,
 통합테스트 작성을 유도하여 api client, api server 두 프로젝트를 동시에 검증하는걸 의도하고 있습니다.
