@@ -20,7 +20,6 @@
 - 기간: 2025.4 - 2025.10 (약 6개월)
 - 인원: 백엔드 1명
 - 핵심 기술: kotlin, kotlin coroutine, spring, jpa, mysql, airflow
-- 주요 역할: 기획, 설계, 개발
 
 ## 주요 해결 과제
 
