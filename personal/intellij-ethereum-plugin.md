@@ -1,5 +1,23 @@
 # IntelliJ Ethereum Plugin: 통합 블록체인 개발 환경 구축
 
+## 한줄 요약
+
+`keth`, `keth-client` 위에 IntelliJ VirtualFileSystem을 확장하여 블록체인 탐색/디버깅 통합 환경을 구축한 IDE 플러그인. Core부터 UI까지 수직 통합 설계.
+
+## 스크린샷
+
+### 블록체인 실시간 모니터링 및 block, transaction, log 를 조회 및 검색할 수 있습니다.
+
+![plugin-vfs.png](plugin-vfs.png)
+
+### 모니터링 등 상호작용 하고 싶은 node 관리
+
+![plugin-add-network.png](plugin-add-network.png)
+
+### abi 관리, 등록하면 스마트 컨트랙트 사용 결과를 해석해서 보여줍니다.
+
+![plugin-add-abi.png](plugin-add-abi.png)
+
 ## 배경 & 도전
 
 이더리움 개발자는 코드를 작성하고(IDE), 실행하고(Terminal), 데이터를 확인하고(Etherscan), 디버깅하는(Remix/Log) 과정에서
@@ -92,8 +110,5 @@ private suspend fun fetchBlockTxCount(range: ULongRange) = client.batch {
 - 기술적 성취:
     - EVM과 StateDB를 직접 구현하여 로컬 시뮬레이션 환경을 구축했습니다.
     - IDE의 성능 제약 안에서 대용량 블록체인 데이터를 처리하기 위해 클라이언트 라이브러리 레벨부터 최적화를 수행했습니다.
-- 마무리:
-    - 핵심 엔진과 데이터 파이프라인의 기술적 난제들은 모두 해결하여 기술 검증을 완료했습니다.
-    - 이후의 UI 패널 구성 작업은 단순 반복적인 성격이 강하고, 현재는 블록체인 외의 분야로 커리어 방향을 전환하였기에 프로젝트를 현재 상태로 동결하였습니다.
 
-비록 상용화까지 가지는 않았지만, 이 프로젝트를 통해 복잡한 도메인 지식을 개발자 도구로 풀어내는 엔지니어링 역량을 확보할 수 있었습니다.
+핵심 엔진과 데이터 파이프라인의 기술적 난제는 모두 해결했습니다. UI 패널 구성은 기술적 챌린지보다 반복 작업의 비중이 높고, 커리어 방향 전환으로 현재 동결 상태입니다.
