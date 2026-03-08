@@ -1,34 +1,23 @@
 # 키워드 정책 서비스 고도화
 
-## 배경 및 도전
-
-키워드 정책 서비스는 회사 백엔드 주요 서비스들이 사용하는 금지어 탐지 서비스입니다.
-*상품 등록*, *검색*, *채팅*, *이미지 텍스트* 등 유저가 생성할 수 있는 대부분의 텍스트 입력을 검증하기 위해 사용됩니다.
-
-이 프로젝트를 인수인계 받아 유지보수 중에 허용어가 잘 안된다라는 문제를 제보받아 버그를 수정하는 과정에서 기존 코드는 유지보수가 어렵다 라고 판단했습니다.
-또한 안전결제 100% 도입 및 수수료 인상으로 인하여 각종 금지어 우회패턴이 등장하고 있었고, 기존 시스템으로는 이를 효과적으로 대응하지 못하고 있었습니다.
-이 두가지 문제를 해결하기 위하여 기존 시스템을 리팩토링하고, 기능을 추가해서 대응하고 있습니다.
-
 ## 프로젝트 개요
 
 - 기간: 2025.12 - 2026.02 (약 2개월)
 - 인원: 1명
+- 핵심 기술: Kotlin, Kotlin Coroutine, Spring
 
-## 주요 해결 과제
+## 핵심 요약
 
-### client library
+아호코라식 도입 및 파이프라인 재설계로 금지어 탐지 성능 2배 이상 향상, 이모지·초성 우회패턴 대응을 위한 정규화 파이프라인 설계 및 서버 주도 실시간 정책 제어 아키텍처 구현
 
-- 기존의 복잡했던 허용어 기능을 단순화
-- 특정 기술에 침투적인 코드를 주요 로직과 분리(spring, rsocket)
-- api 서버에서 클라이언트의 설정을 동적으로 갱신할 수 있도록 이벤트 루프 도입
-- 마스킹, 금지어 검증을 각각 클래스에서 처리하던걸 목적에 맞게 분리하고 성능 최적화
-- 다앙햔 목적에 맞게 api 서버에 로깅을 보낼수 있도록 개선
-- 각종 변종을 대응하기 위한 텍스트 정규화 단계 추가
+## 배경 및 도전
 
-### api server
+키워드 정책 서비스는 상품 등록, 검색, 채팅, 이미지 텍스트 등 유저가 생성하는 대부분의 텍스트를 검증하는 핵심 서비스입니다.
 
-- client 의 설정을 원격으로 조절할 수 있도록 개선
-- client 가 전송하는 로그를 받아 각종 관측 도구에 보여주도록 개선
+인수인계 후 유지보수 중 두 가지 문제를 발견했습니다.
+
+- 허용어 버그를 수정하는 과정에서 기존 코드 구조가 유지보수하기 어렵다고 판단
+- 안전결제 수수료 인상 이후 이모지, 초성 등 각종 우회 패턴이 급증하고 있었으나 기존 시스템으로는 효과적으로 대응 불가
 
 ## 아키텍쳐
 
@@ -46,80 +35,18 @@ flowchart
 
 ## 주요 기여
 
-### client 마스킹, 금지어 검증 기능 재구현 및 성능 최적화
-
-기존 코드는 마스킹, 금지어 검증이라는 기능을 클래스 단위로 표현하였고, 수정한 문자열을 단일 클래스에 들고 있는 형태였습니다.
-
-하단은 금지어 검증측 코드를 단순화 하였습니다.
-
-```kotlin
-class KeywordPreset(val lowercase: String, val uppercase: String /* 그 외 필드 4개 */)
-class VerifyProcessor(val allows: List<Phrase>, val blocks: List<Phrase>) {
-    fun hasBlocked(preset: KeywordPreset): Boolean {
-        for (phrase in allows) {
-            preset.lowercase.replace(phrase.pattern, "") // 6 필드 모두 수행 
-        }
-
-        for (phrase in blocks) {
-            // preset 에서 적합한 필드 하나 선택해서 exact, contain, regex 매칭 중 하나 실행
-            if (phrase.matchs(preset)) return true
-        }
-        return false
-    }
-}
-```
-
-이를 구문 성격에 따라 매칭 클래스를 나누고 통합 프로세서를 만들었습니다.
-
-```kotlin
-// 단순히 구문을 어떤 방식으로 매칭한다. 라는것을 표현합니다.
-internal sealed interface PhraseMatcher {
-    fun fillMatchIndex(text: CharSequence, matchedIndices: MutableMap<Int, Set<Int>>)
-    fun firstMatch(text: String): PhraseMatchResult?
-    fun containMatch(text: String): Boolean
-
-    companion object {
-        // hashcode를 활용하여 O(1) 연산으로 처리합니다. if (text in idByPattern)
-        fun exact(idByPattern: Map<String, Int>): PhraseMatcher = ExactPhraseMatcher(idByPattern)
-
-        // 아호코라식을 활용하여 O(n) 연산으로 처리합니다. n = text 길이
-        fun contain(patternById: Map<Int, String>): PhraseMatcher = ContainPhraseMatcher(patternById)
-
-        // 정규식 for
-        fun regex(patternById: Map<Int, String>): PhraseMatcher = RegexPhraseMatcher(patternById)
-    }
-}
-
-class PhrasePipeline {
-    fun findBlockKeyword(text: String): PhraseMatchResult? {
-        val refinedText = allow.process(text)
-        for ((text, type, lang) in DerivedStringSequence(refinedText)) {
-            val blockedText = block.process(allowedText, type, lang)
-            if (blockedText != null) return blockedText
-        }
-        return null
-    }
-}
-```
-
-새롭게 구현된 코드들은 phrase 가 많고, text input 이 길면 길수록 기존 대비 exact, contain 에서 성능 차이를 보여줬습니다.
-또한 테스트 용이성, 유지보수성 증대 등 다양한 개선사항도 포함되었습니다.
-
-#### 벤치마크
-
-- 맥북 m4
-- exact 구문 20개, contain 구문 50개 시뮬레이션
-
-```
-exactV1    thrpt    3  37889472.663 ± 9552229.574  ops/s
-exactV2    thrpt    3  95220132.204 ± 3665947.321  ops/s
-containV1  thrpt    3   796130.736  ±  84858.020   ops/s
-containV2  thrpt    3  3036908.411  ± 147106.356   ops/s
-```
-
 ### 이벤트 기반 동적 설정 관리 시스템 구축
 
-client 측에서 서버 푸쉬를 받는 이벤트 루프를 구축하여 서버 주도의 실시간 정책 전파 및 제어 아키텍처를 구현했습니다.
+클라이언트 측에 서버 푸시를 받는 이벤트 루프를 구축하여 서버 주도의 실시간 정책 전파 및 제어 아키텍처를 구현했습니다.
+
+`KeywordPolicyManager`에 핵심 루프 로직을 집중시키고, Spring 통합은 `KeywordPolicyClientImpl`로 분리하여 프레임워크 의존성이 비즈니스 로직에 침투하지 않도록 설계했습니다.
+
+이 이벤트 루프를 활용하여 다음 기능을 구현하거나 설계했습니다.
+
+- 신규 금지어 검증 코드 병렬 실행 및 기존 코드와 불일치 시 서버 보고 — **구현 완료**
+- 사용 빈도 낮은 특수문자열 탐지 및 서버 보고 — **구현 완료, 적용 요청 중**
+- 평상시보다 금지어 탐지 급증 시 서버 보고 — **설계 완료, 구현 예정**
+- 성능 모니터링 — **설계 완료, 구현 예정**
 
 ```kotlin
 private val job = scope.launch {
@@ -143,30 +70,42 @@ private val job = scope.launch {
 }
 ```
 
-이 기능을 활용하여 다음과 같은 기능을 구현 / 구현할 예정 입니다.
+### 금지어 탐지 파이프라인 재설계 및 성능 최적화
 
-- 새롭게 구현한 금지어 검증 코드를 병렬 실행 및 기존 코드와 불일치 하는 경우 서버로 보고하는 기능 (서버 제어로 병렬 실행 비율 조절 가능)
-- 사용 빈도가 매우 낮은 특수문자열 탐지 및 서버 보고
-- 평상시보다 금지어 탐지가 많이 될 경우, 서버로 보고
-- 성능 모니터링
+기존 코드는 마스킹과 금지어 검증을 기능 단위 클래스로 표현하고, 허용어 처리 시 6개 필드를 모두 순회하는 구조였습니다.
+구문 수가 많고 텍스트가 길어질수록 성능이 선형으로 나빠지는 구조적 문제가 있었습니다.
 
-### 텍스트 정규화 단계 개발
+이를 구문의 매칭 성격에 따라 세 가지로 분리하고, `허용 → 금지` 2단계 파이프라인으로 재설계했습니다.
 
-안전결제 수수료 인상 이후 다음과 같은 우회 패턴들이 우후죽순 발생하고 있었습니다.
+- `exact`: HashMap O(1) 매칭
+- `contain`: 아호코라식 O(n) 매칭 (n = 텍스트 길이)
+- `regex`: 정규식 매칭
 
-- 🦀좌 : 계좌
-- ㄱㅒ좌 : 계좌
-- 🍫💬 : 카카오톡
+#### 벤치마크
 
-허용 -> 금지로 이뤄진 현재 상태에선 위와 같은 패턴들을 제어하기 위해선 각 변종마다 금지어 규칙을 적용해야 합니다.
-이는 운영 공수가 매우 많이 들고, 많은 금지어 등록으로 인한 성능 저하가 발생할 가능성이 있다고 판단했습니다.
+- 환경: MacBook M4
+- 조건: exact 구문 20개, contain 구문 50개
 
-그래서 텍스트 정규화 단계를 추가하여 `허용 -> 정규화 -> 금지` 3단계 파이프라이닝으로 해결하려고 하고 있습니다.
-핵심은 mapping 테이블을 추가하고, 한국어는 유니코드 조합을 통해 다른 텍스트로 치환만 하는것입니다.
+```
+exactV1    thrpt    3  37,889,472  ops/s
+exactV2    thrpt    3  95,220,132  ops/s  (+151%)
+containV1  thrpt    3     796,130  ops/s
+containV2  thrpt    3   3,036,908  ops/s  (+281%)
+```
 
-- 🦀 -> 계
-- 🍫 -> 카
-- 💬 -> 톡
-- ㄱㅒ -> 걔
+### 텍스트 정규화 파이프라인 설계
 
-이 기능과 함께, *사용 빈도가 낮은 문자열 탐지 및 보고 기능*이 합쳐진다면, 자체적으로 피드백 가능한 금지어 탐지 시스템이 완성되리라고 생각합니다.
+안전결제 수수료 인상 이후 아래와 같은 우회 패턴이 급증했습니다.
+
+- `🦀좌` → 계좌
+- `ㄱㅒ좌` → 계좌
+- `🍫💬` → 카카오톡
+
+기존 `허용 → 금지` 구조에서는 변종마다 금지어 규칙을 추가해야 했고, 금지어가 누적될수록 성능 저하와 운영 공수가 증가하는 구조적 문제가 있었습니다.
+
+이를 해결하기 위해 `허용 → 정규화 → 금지` 3단계 파이프라인을 설계했습니다.
+매핑 테이블을 통해 이모지와 초성을 정규 문자로 치환하면, 변종이 추가되어도 금지어 규칙 추가 없이 매핑 테이블만 갱신하면 됩니다.
+
+사용 빈도 낮은 문자열 탐지 및 보고 기능과 결합되면, 외부 채널 피드백 없이 우회 패턴을 수집하고 매핑 테이블에 반영하는 자가 학습 구조가 완성됩니다.
+
+> 매핑 테이블 설계 및 정규화 파이프라인 구조 설계 완료, 구현 예정
