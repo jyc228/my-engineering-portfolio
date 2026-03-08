@@ -53,7 +53,7 @@
 
 ### [블록체인 서비스 유지보수](lightscale/maintenance.md) | 2023년 5월 (17개월)
 
-- **핵심 성과**: 조직의 기술 수준 상향
+- **핵심 성과**: 6시간 체인 중단 사고 예견 및 근본 해결, go-ethereum 업스트림 주도
 - **키워드**: `golang`, `오픈소스 업스트림`
 
 ## 개인 프로젝트
@@ -70,5 +70,5 @@
 
 ### [IntelliJ Ethereum Plugin](personal/intellij-ethereum-plugin.md)
 
-- **핵심 성과**: IntelliJ VirtualFileSystem(VFS)을 확장하여, 컨텍스트 스위칭을 없앤 IDE 내장형 블록체인 탐색기 및 로컬 환경 구축
+- **핵심 성과**: IntelliJ VirtualFileSystem(VFS) 직접 확장, IDE 내장형 탐색기 및 로컬 디버깅 환경 구축
 - **키워드**: `Kotlin`, `Plugin`
