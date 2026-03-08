@@ -1,8 +1,18 @@
-# 회사 백엔드 플랫폼
+# 조직 백엔드 플랫폼
+
+## 프로젝트 개요
+
+- 기간: 2025.4 - 2025.10 (약 6개월)
+- 인원: 백엔드 1명
+- 핵심 기술: kotlin, kotlin coroutine, spring, jpa, mysql, airflow
+
+## 한줄 요약
+
+30명 백엔드 조직의 파편화된 개발 환경을 해결하기 위해 혼자 설계, 구축한 내부 개발자 플랫폼(IDP). 보일러플레이트 95% 제거, API/Batch/Data 계층 전체 표준화.
 
 ## 배경 & 도전
 
-회사의 백엔드 시스템은 수십 개의 마이크로서비스로 구성되어 있으며, 30명 이상의 개발자가 동시에 협업하고 있습니다.
+조직의 백엔드 시스템은 수십 개의 마이크로서비스로 구성되어 있으며, 30명 이상의 개발자가 동시에 협업하고 있습니다.
 이러한 환경에서 저는 이런 문제가 있다고 정의했습니다.
 
 - 프로젝트마다 일관성 없이 조직 공통 응답 데이터 모델 생성
@@ -15,51 +25,40 @@
 
 저는 이 비전을 실현하기 위해 API, 데이터, 이벤트, MSA 통신, 테스트 등 백엔드 개발의 전체 생명주기를 아우르는 플랫폼을 0에서 1로 직접 설계하고 구축했습니다.
 
-## 프로젝트 개요
-
-- 기간: 2025.4 - 2025.10 (약 6개월)
-- 인원: 백엔드 1명
-- 핵심 기술: kotlin, kotlin coroutine, spring, jpa, mysql, airflow
-
-## 주요 해결 과제
-
-- 보일러 플레이크 코드 제거
-- 서버 설정 구조를 회사, 어플리케이션 두개로 나누고 회사측 설정 구조를 일원화
-- 개발자 생산성 향상 (쉽고 직관적인 인터페이스, 쉬운 사용, 풍부한 주석, 실수 가능성 낮아짐, 설정 실패시 상세한 리포트)
-- 통일된 설정 구조로 인한 devops 와 소통 비용 절감
-
 ## 아키텍쳐
 
 각각 명확한 책임을 가진 spring-boot-starter 라이브러리 세트로 구성되어 있습니다
-상위에는 프레임워크에 종속적이지 않은 bun-core-kotlin, bun-crypto-kotlin 이라는 라이브러리가 있습니다.
+상위에는 프레임워크에 종속적이지 않은 core-kotlin, crypto-kotlin 이라는 라이브러리가 있습니다.
 
-- bun-core-kotlin: 인증된 유저 등 모든 라이브러리가 공유하는 핵심 추상화.
-- bun-crypto-kotlin: 암복호화 라이브러리
-- bun-spring-starter-api-lib: API 계층 표준.
-- bun-spring-starter-batch-job-lib: BATCH 계층 표준.
-- bun-spring-starter-data-lib: 데이터 접근 계층의 안정성과 생산성.
-- bun-event-publisher/subscriber: 이벤트 기반 시스템의 표준 (2년차때 만든거라서 이름이 통일되어 있지 않습니다.)
-- bun-spring-starter-api-client-lib: MSA 통신의 신뢰성 개선.
+- core-kotlin: 인증된 유저 등 모든 라이브러리가 공유하는 핵심 추상화.
+- crypto-kotlin: 암복호화 라이브러리
+- spring-starter-api-lib: API 계층 표준.
+- spring-starter-batch-job-lib: BATCH 계층 표준.
+- spring-starter-data-lib: 데이터 접근 계층의 안정성과 생산성.
+- event-publisher/subscriber: 이벤트 기반 시스템의 표준 (2년차때 만든거라서 이름이 통일되어 있지 않습니다.)
+- spring-starter-api-client-lib: MSA 통신의 신뢰성 개선.
 
 ## 주요 기여
 
 ### [api](platform-api.md)
 
-api 서버 프로젝트 에서 나오는 공통적인 문제를 해결합니다.
+페이징 모델 재설계, 타입 안전한 정렬 파라미터, 표준 응답 모델 구조화
 
 ### [batch](platform-batch.md)
 
-batch 서버 프로젝트 에서 나오는 공통적인 문제를 해결합니다.
+Airflow 연동, 배치잡 정의 방식 표준화, 작업 결과 보고 시스템
 
 ### [data](platform-data.md)
 
-db 에 접근하는 모든 프로젝트의 공통적인 문제를 해결합니다.
+분산락, 필드 레벨 암호화, EnumColumn 타입 안전 변환, DB 설정 표준화
 
 ### [api-client](platform-api-client.md)
 
+OpenAPI 기반 타입 안전 클라이언트 자동 생성, E2E 테스트 기반 구축
+
 # Impact & Vision
 
-이 플랫폼은 현재 회사의 일부 팀에 적용되어 개발 생산성을 높이고 있으며, 조직의 공식적인 기술 자산으로 인정받았습니다.
+이 플랫폼은 현재 조직의 일부 팀에 적용되어 개발 생산성을 높이고 있으며, 조직의 공식적인 기술 자산으로 인정받았습니다.
 `event-publisher/subscriber` 와 같은 초기 모듈은 제가 필요해서 만들었지만, 제가 퇴사한 이후엔 거의 모든 팀이 사용하면서 수년간 조직의 핵심 인프라로 사용될 만큼 그 가치를 증명했습니다.
 
 저의 최종 목표는 이 플랫폼을 더욱 발전시켜, devops 와 개발자간의 소통 비용을 줄이고, 개발 속도 증가 및 버그 하락, 신뢰성 있는 자동화 E2E 회귀 테스트를 가능하게 하는 것입니다.
