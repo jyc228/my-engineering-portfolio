@@ -2,6 +2,10 @@
 
 [github](https://github.com/jyc228/keth)
 
+## 한줄 요약
+
+`geth` 코어를 바이트 단위까지 이해하기 위해 `Kotlin`으로 `EVM`, `StateDB`, `MPT`를 밑바닥부터 재구현한 R&D 프로젝트. 실무 장애 대응과 성능 최적화의 직접적 원동력.
+
 ## 배경 & 도전
 
 조직 업무로 [geth](https://github.com/ethereum/go-ethereum) 라는 ethereum 의 go 구현체를 유지보수 하고 있었습니다.
@@ -115,7 +119,10 @@ interface ManagedStateAccount : StateAccount {
 `StateDatabase` 는 2가지의 구현체가 있습니다.
 
 - `OnchainStateDatabase`: `trie` 에 접근하는 db 입니다. 일반적인 블록체인 풀노드 (디스크 사용량 : 수백 gb 이상) 에서 사용하는 구현체 입니다.
-- `OffchainStateDatabase`: 네트워크를 통해 데이터를 조회하는 db 입니다. disk 사용량이 없으며 테스트, debugger 등 경량화된 사용을 목표로 만들었습니다.
+- `OffchainStateDatabase`: 네트워크를 통해 데이터를 조회하는 db 입니다.
+  - disk 사용량이 없으며 테스트, debugger 등 경량화된 사용을 목표로 만들었습니다.
+  - `eth_getProof`로 계정을 조회하고, `storage`와 `code`는 실제 접근 시점에만 lazy하게 네트워크에서 가져옵니다. 
+  - `origin`/`dirty` 분리로 `committed state`와 실행 중 변경을 구분합니다.
 
 특히 `OffchainStateDatabase` 를 만들면서 debugger 를 만들수 있겠다. 라는 생각을 가지게 되었습니다.
 
@@ -206,6 +213,37 @@ func (evm *EVM) DelegateCall(originCaller common.Address, caller common.Address,
 	return ret, gas, err
 }
 ```
+
+`Delegate` 의 실제 활용 예시로 `EVMStructLogger`가 있습니다.
+`EVMInterpreterDelegate`와 `StateDatabase`를 동시에 구현하여, `opcode` 단위 실행 추적과 `storage` 접근 로깅을 코어 코드 변경 없이 외부에서 조립할 수 있습니다.
+
+```kotlin
+class EVMStructLogger : EVMInterpreterDelegate, AbstractStateDatabase() {
+    // 인터프리터 흐름 가로채기
+    override suspend fun execute(frame: EVMFrame, operation: Operation?, execute: ...) {
+        val log = StructLog(pc = frame.pc, op = operation?.opCode, ...)
+        return execute(frame, operation).apply { log.gasCost -= frame.remainGas }
+    }
+    // StateDB도 래핑하여 storage 접근까지 추적
+    // DelegatedStateAccount가 storage get/set만 오버라이드하여 로깅을 끼워넣음
+}
+```
+
+위의 `EVMStructLogger` 를 활용하면 `opcode` 내역과 실행한 값을 전부 추출하여, fixture 테스트도 수행할 수 있습니다.
+
+```kotlin
+fun test() {
+    val logger = EVMStructLogger(enableStorage = true)
+    evm.execute(eth.getTransactionByHash(txHash), logger)
+    val structLogsFromRemote = eth.debug_traceTransaction(txHash).structLogs
+    val structLogsFromLocal = logger.logs
+    // structLogsFromLocal, structLogsFromRemote 일치 검증
+}
+```
+
+실제로 조직 메인넷 트랜잭션을 대상으로 검증했습니다.
+`OffchainStateDatabase` 덕분에 풀노드 없이 네트워크로 state를 조회하며 로컬에서 트랜잭션을 재현할 수 있었고,
+`TransactionReceipt` 비교 → 불일치 시 `debug_traceTransaction`으로 `opcode` 단위 추적까지 3단계로 검증했습니다.
 
 - [Operations](https://github.com/jyc228/keth/blob/dev/ethereum/vm/src/main/kotlin/com/github/jyc228/keth/vm/Operations.kt)
 - [Operation](https://github.com/jyc228/keth/blob/dev/ethereum/vm/src/main/kotlin/com/github/jyc228/keth/vm/Operation.kt)
