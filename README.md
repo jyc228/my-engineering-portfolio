@@ -8,36 +8,25 @@
 - 코어 자료구조 재설계로 6시간 체인 중단 사고 근본 해결
 - 광고 미송출 20% 자발적 발견 → 일 100만원 추가 수익 창출
 - 내부 개발자 플랫폼 0→1 독자 구축 → 보일러플레이트 95% 제거
+- 상품/인증 핵심 도메인 Python → Kotlin/Spring 재설계, 피크 5500+ rps 지속 운영
 - 3년차부터 현재까지 팀 리드 및 멘토링 지속
 
 ---
 
 ## 주요 프로젝트
 
-### 번개장터
-
-| 프로젝트                                | 한 줄 요약             |
-|-------------------------------------|--------------------|
-| [백엔드 개발 플랫폼](bunjang/platform.md)   | 30명 조직 IDP 설계 및 구축 |
-| [복권 시스템](bunjang/lottery.md)        | 고트래픽 중복 당첨 0% 설계   |
-| [광고 최적화](bunjang/advertisement.md)  | 일 100만원 추가 수익 창출   |
-| [금지어 탐지](bunjang/keyword-policy.md) | 탐지 성능 2배 향상        |
-
-### 라이트스케일
-
-| 프로젝트                                  | 한 줄 요약                           |
-|---------------------------------------|----------------------------------|
-| [블록체인 코어 최적화](lightscale/zktrie.md)   | 성능 저하 문제 근본적 해결, 플랫폼 처리량 300% 향상 |
-| [P2P 데이터 동기화](lightscale/snapsync.md) | 동기화 시간 2주 → 2일                   |
-
-### 개인
-
-| 프로젝트                                   | 한 줄 요약                 |
-|----------------------------------------|------------------------|
-| [keth-client](personal/keth-client.md) | Kotlin Ethereum SDK 설계 |
-| [keth](personal/keth.md)               | EVM / StateDB 직접 구현    |
+| 프로젝트                                        | 한 줄 요약                           |
+|---------------------------------------------|----------------------------------|
+| [백엔드 개발 플랫폼](bunjang/platform.md)           | IDP 구축                           |
+| [복권 시스템](bunjang/lottery.md)                | 고트래픽 중복 당첨 0% 설계                 |
+| [광고 최적화](bunjang/advertisement.md)          | 일 100만원 추가 수익 창출                 |
+| [금지어 탐지](bunjang/keyword-policy.md)         | 탐지 성능 2배 향상                      |
+| [블록체인 코어 최적화](lightscale/zktrie.md)         | 성능 저하 문제 근본적 해결, 플랫폼 처리량 300% 향상 |
+| [keth-client (개인)](personal/keth-client.md) | Kotlin Ethereum SDK 설계           |
+| [keth (개인)](personal/keth.md)               | EVM 직접 구현                        |
 
 > 전체 프로젝트 목록은 [all-projects.md](all-projects.md)에서 확인하실 수 있습니다.
+
 ---
 
 ## Contact
