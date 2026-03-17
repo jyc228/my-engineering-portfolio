@@ -17,9 +17,9 @@
 
 | 프로젝트                                        | 한 줄 요약                           |
 |---------------------------------------------|----------------------------------|
-| [백엔드 개발 플랫폼](bunjang/platform.md)           | IDP 구축                           |
 | [복권 시스템](bunjang/lottery.md)                | 고트래픽 중복 당첨 0% 설계                 |
 | [광고 최적화](bunjang/advertisement.md)          | 일 100만원 추가 수익 창출                 |
+| [백엔드 개발 플랫폼](bunjang/platform.md)           | IDP 구축                           |
 | [금지어 탐지](bunjang/keyword-policy.md)         | 탐지 성능 2배 향상                      |
 | [블록체인 코어 최적화](lightscale/zktrie.md)         | 성능 저하 문제 근본적 해결, 플랫폼 처리량 300% 향상 |
 | [keth-client (개인)](personal/keth-client.md) | Kotlin Ethereum SDK 설계           |
