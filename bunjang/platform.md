@@ -2,7 +2,7 @@
 
 ## 프로젝트 개요
 
-- 기간: 2025.4 - 2025.10 (약 6개월)
+- 기간: 2025.03 - 현재 (2025.10 까지 구축, 이후 지속 개선)
 - 인원: 백엔드 1명
 - 핵심 기술: kotlin, kotlin coroutine, spring, jpa, mysql, airflow
 
@@ -35,14 +35,14 @@ API, 데이터, 이벤트, 서비스 간 통신, 테스트 영역을 대상으�
 - spring-starter-api-lib: API 계층 표준.
 - spring-starter-batch-job-lib: BATCH 계층 표준.
 - spring-starter-data-lib: 데이터 접근 계층의 안정성과 생산성.
-- event-publisher/subscriber: 이벤트 기반 시스템의 표준 (2년차때 만든거라서 이름이 통일되어 있지 않습니다.)
+- event-publisher/subscriber: Kinesis 이벤트 발행/구독 표준. 첫 재직 때 만들어 이름이 통일되어 있지 않습니다. 자세한 내용은 [event-stream.md](event-stream.md)
 - spring-starter-api-client-lib: MSA 통신의 신뢰성 개선.
 
 ## 주요 기여
 
 ### [api](platform-api.md)
 
-페이징 모델 재설계, 타입 안전한 정렬 파라미터, 표준 응답 모델 구조화
+페이징 모델 재설계, 타입 안전한 정렬 파라미터, 표준 응답 모델 구조화, client-kotlin 에서 인증 리졸버 분리, 예외 처리와 자동 구성 재정리
 
 ### [batch](platform-batch.md)
 
@@ -54,12 +54,12 @@ Airflow 연동, 배치잡 정의 방식 표준화, 작업 결과 보고 시스�
 
 ### [api-client](platform-api-client.md)
 
-OpenAPI 기반 타입 안전 클라이언트 자동 생성, E2E 테스트 기반 구축
+OpenAPI 기반 타입 안전 클라이언트 생성 Gradle 플러그인, 사용하는 API 만 선언해 생성하고 스펙 변경은 lock 파일로 감지
 
 ## 현재 상황과 앞으로
 
 현재 조직의 일부 팀에서 사용하고 있고, 사내 공식 기술 자산으로 인정받았습니다.
-`event-publisher/subscriber` 같은 초기 모듈은 제가 필요해서 만든 것이었는데, 퇴사한 뒤에도 대부분의 팀이 몇 년간 계속 사용하고 있었습니다.
+`event-publisher/subscriber` 는 제가 쓰려고 만든 것이었는데, 퇴사 후 전사 공용 라이브러리로 채택되어 재입사했을 때는 백엔드 전체가 쓰고 있었습니다. 이후 직접 v2 로 다시 설계했습니다. ([event-stream.md](event-stream.md))
 
 앞으로는 E2E 회귀 테스트 자동화까지 연결해보고 싶습니다.
 각 서비스가 통합 테스트로 자기 API와 API 클라이언트를 검증하고, 이 통합 테스트들을 설정만 바꿔서 E2E 테스트로 돌릴 수 있게 만드는 것이 목표입니다.
