@@ -1,23 +1,22 @@
-# keth-client: 사용자 친화적 고성능 Kotlin Ethereum SDK
+# keth-client: Kotlin Ethereum SDK
 
 [github](https://github.com/jyc228/keth-client)
 
 ## 한줄 요약
 
-Batch DSL과 독자적인 코드 생성 엔진을 직접 설계한 Kotlin Ethereum SDK. 성능 최적화와 개발자 경험을 동시에 달성.
+요청 배치 처리 DSL과 ABI 기반 코드 생성기를 갖춘 Kotlin Ethereum SDK. 코드 생성기는 Kotlin 문법 구조를 직접 모델링해서 만들었습니다.
 
 ## 배경 & 도전
 
-기존의 JVM 계열 블록체인 라이브러리(Web3j 등)들은 실제 개발 현장에서 발생하는 비효율과 생산성 저하를 해결하지 못한다고 정의했습니다.
+기존 JVM 계열 블록체인 라이브러리(Web3j 등)를 쓰면서 아래와 같은 불편함이 있었습니다.
 
 - 성능과 가독성의 트레이드오프: 성능을 위해 Batch Request(묶음 요청)를 쓰려면 코드 구조를 완전히 바꿔야 했고, 가독성을 위해 동기식 코드를 짜면 너무 많은 api 호출이 필요하며 성능이
   저하되었습니다.
 - 타입 안전성의 부재: 스마트 컨트랙트 호출 시 ABI 스펙을 JSON 문자열로 다루거나, 생성된 Wrapper 클래스가 너무 무겁고 사용하기 불편했습니다.
-- 모던 아키텍처 미지원: Coroutine 같은 Kotlin의 강력한 동시성 모델을 지원하지 않아, 비동기 처리가 복잡하고 리소스 효율이 낮았습니다.
+- Coroutine 미지원: Kotlin Coroutine을 지원하지 않아 비동기 처리가 번거로웠습니다.
 
-라이브러리는 사용 시 모호함이 없어야 하고, 스펙이나 비즈니스를 이해했다면 직관적으로 쓸 수 있어야 합니다.
-**복잡한 문서 없이 IDE 자동 완성만 따라가며 적당히 썼는데도 최고의 성능이 나오는 것**, 이것이 제가 생각하는 이상적인 라이브러리입니다.
-이 프로젝트는 위의 모든 문제를 해결하여, DX 를 극적으로 끌어 올렸습니다.
+제가 생각하는 좋은 라이브러리는 **문서를 많이 읽지 않아도 IDE 자동 완성을 따라가며 쓰면 되고, 그렇게 써도 성능이 잘 나오는 라이브러리**입니다.
+이 프로젝트는 그 방향을 목표로 만들었습니다.
 
 ## 과제
 
@@ -31,8 +30,8 @@ Batch DSL과 독자적인 코드 생성 엔진을 직접 설계한 Kotlin Ethere
 
 구현: `ApiResult<T>`를 반환하여, 개별 요청은 즉시 실행되지 않고 배치 실행 시점에 한 번의 HTTP Call로 처리되도록 만들었습니다.
 
-심화: 더 나아가 사용자가 `batch` 함수를 쓰지 않아도 일정 기간 동안 요청 수집후 단일 패킷으로 전송하는 기능을 구현하였습니다. 이는 Rate Limit을 회피하면서 처리량을 극대화합니다.
-이 기능을 통해 어떤 코루틴에서 사용하던 간에 같은 client 인스턴스를 사용하는 경우, 요청 처리량을 최적화하며 개발 편의성과 네트워크 효율성을 동시에 잡았습니다.
+추가로, `batch` 함수를 쓰지 않아도 일정 시간 동안 요청을 모았다가 한 번에 보내는 기능을 만들었습니다. Rate Limit에 덜 걸리고 처리량도 늘어납니다.
+같은 client 인스턴스를 쓰면 서로 다른 코루틴에서 보낸 요청도 묶여서 전송됩니다.
 
 * [EthereumClient github](https://github.com/jyc228/keth-client/blob/dev/src/main/kotlin/com/github/jyc228/keth/client/EthereumClient.kt)
 * [EthereumClientFactory github](https://github.com/jyc228/keth-client/blob/dev/src/main/kotlin/com/github/jyc228/keth/client/EthereumClientFactory.kt)
@@ -90,7 +89,7 @@ fun example3() {
 
 KotlinPoet이 있지만 Kotlin 문법 구조를 직접 모델링하고 싶었고, 코드 생성기 자체를 설계하는 경험을 쌓기 위해 직접 구현했습니다.
 핵심 목표는 kotlin 언어 구조를 이해했을때 직관적으로 사용할 수 있는 구조입니다.
-이 목표를 달성하기 위하여 kotlin 공식 문법 문서를 적극적으로 사용하여 문법 구조(AST)를 직접 모델링했으며 **독자적인 코드 생성 엔진(DSL)** 을 구현했습니다.
+Kotlin 공식 문법 문서를 참고해서 문법 구조를 직접 모델링하고, 이를 기반으로 코드 생성 DSL을 구현했습니다.
 
 아래는 테스트코드 예제입니다.
 
@@ -126,10 +125,8 @@ fun test2() {
 
 ## 결과
 
-이렇게 탄생된 라이브러리는 기존 jvm ethereum 보다 훨씬 사용하기 편했으며,
-이는 차후 intellij ethereum plugin 개발시, 개발 난이도 및 성능 최적화에 직접적인 영향을 주게 되었습니다.
-그와 별개로, 개인적으로도 그래들 플러그인, 코드 생성기 등 평상시엔 접하기 힘든 다양한 경험을 해 볼 수 있었고,
-이것은 [bun-platform.md](../bunjang/platform.md) 작업할때 직접적인 도움이 되었습니다.
+제가 쓰기에는 기존 JVM 라이브러리보다 편했고, 이후 IntelliJ Ethereum Plugin을 만들 때 그대로 활용했습니다.
+그래들 플러그인, 코드 생성기 등을 만들어 본 경험은 이후 [공통 라이브러리](../bunjang/platform.md) 작업에도 도움이 되었습니다.
 
 ### 부록
 

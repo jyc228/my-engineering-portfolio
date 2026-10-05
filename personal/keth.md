@@ -4,14 +4,13 @@
 
 ## 한줄 요약
 
-`geth` 코어를 바이트 단위까지 이해하기 위해 `Kotlin`으로 `EVM`, `StateDB`, `MPT`를 밑바닥부터 재구현한 R&D 프로젝트. 실무 장애 대응과 성능 최적화의 직접적 원동력.
+업무로 다루던 `geth`를 더 잘 이해하기 위해 `Kotlin`으로 `MPT`, `StateDB`, `EVM`을 다시 구현해 본 개인 프로젝트. 여기서 얻은 이해가 실제 업무의 성능 개선과 장애 대응에 도움이 되었습니다.
 
 ## 배경 & 도전
 
 조직 업무로 [geth](https://github.com/ethereum/go-ethereum) 라는 ethereum 의 go 구현체를 유지보수 하고 있었습니다.
-`geth` 라는 매우 방대하고 복잡한 프로젝트는 go lang 도 처음, 블록체인도 처음 접하는 저에겐 매우 도전적인 업무였습니다.
-단순 유지보수를 넘어 코어 레벨의 동작 원리를 바이트 단위까지 완벽하게 이해할 필요성을 느꼈습니다.
-이를 위해 가장 익숙한 언어인 Kotlin으로 **이더리움 프로토콜 스펙을 밑바닥부터 재구현(Cleanroom Implementation)** 하는 R&D 프로젝트를 시작했습니다.
+`geth`는 규모가 크고 복잡한 프로젝트였고, Go도 블록체인도 처음이었던 저에게는 어려운 업무였습니다.
+코드를 읽는 것만으로는 이해가 부족하다고 느껴서, 가장 익숙한 Kotlin으로 `geth`의 핵심 부분을 직접 다시 구현해 보기로 했습니다.
 
 ## 과제
 
@@ -65,7 +64,7 @@ interface MerkleTree {
 
 #### zktrie 최적화
 
-이때 얻은 지식 덕분에 조직에서 쓰던 `zktrie (trie 구현체 중 하나, mpt 사용 안했었습니다.)` 에 구조적 병목을 발견하고 최적화 하는 결정적 통찰을 제공했습니다.
+이때 `mpt`를 이해한 덕분에 회사에서 쓰던 `zktrie`(mpt 대신 쓰던 trie 구현체)의 구조적인 병목을 발견할 수 있었습니다.
 그 후로 `zktrie` 를 개선하는 작업에 착수 했습니다. 이와 관련된 이야기는 [blockchain.md](../lightscale/zktrie.md) 에 상세히 적었습니다.
 
 ### mid level : state database
@@ -131,15 +130,14 @@ interface ManagedStateAccount : StateAccount {
 프로젝트 계층상 `state database` 다음 목표는 `evm` 이 되었습니다.
 `state database` 와 같은 mid level 로 묶긴 했지만 `state database` -> `evm` 이 좀 더 정확한 표현이 됩니다.
 
-이부분은 특히 제가 제일 궁금해 했던 파트였습니다. `evm` 클론 코딩을 통해 vm 의 동작 원리를 조금이라도 알 수 있게 되었습니다.
+제가 가장 궁금했던 부분입니다. `evm`을 따라 구현하면서 VM의 동작 원리를 조금은 알게 되었습니다.
 
-`evm` 구현 역시 단순 클론코딩 수준으로 끝내지 않았습니다. 일차적으로 클론 코딩후, 제가 생각하는 유지보수 하기 좋은 구조로 리팩토링을 진행했으며, 가장 영향을 많이 받는 곳은 opcode 와 연산쪽이었습니다.
+`evm`도 우선 그대로 옮긴 뒤, 제가 보기에 유지보수하기 좋은 구조로 리팩토링했습니다. 가장 많이 바뀐 곳은 opcode와 연산 부분입니다.
 
 `geth` 는 opcode 의 주요 파트마다 전부 파일이 분리되어 있습니다 (`instructions.go`, `jump_table.go`, `memory_table.go`, `gas_table.go`).
-매우 표준적인 구조이지만, 저는 이 구조가 파악 및 유지보수를 매우 어렵게 한다고 생각했습니다.
+흔한 구조이지만, 하나의 opcode를 이해하려면 여러 파일을 오가야 해서 파악하기 어렵다고 느꼈습니다.
 
-Kotlin DSL을 활용하여, EVM Opcode의 명세(가스비, 스택 조작, 메모리 확장)를 선언적 코드로 구현했습니다.
-이는 복잡한 Switch-Case 로직을 '실행 가능한 문서' 형태로 승화시켜, 코드의 가독성과 안정성을 획기적으로 높였습니다.
+Kotlin DSL로 opcode별 동작, 가스비, 스택 조작, 메모리 확장을 한 곳에 선언하도록 바꿨습니다.
 
 ```kotlin
 fun OperationBuilder.withOpCode(opCode: OpCode): OperationBuilder {
@@ -159,8 +157,8 @@ fun OperationBuilder.withOpCode(opCode: OpCode): OperationBuilder {
 }
 ```
 
-그 후 인터프리터를 클론 코딩 했습니다. `geth` 의 인터프리터 확장 방식은 코어 소스 코드를 오염시키면서 하고 있었습니다. 저는 핵심 로직과 확장 로직을 분리하기 위하여
-저는 **위임** 을 통해 이를 분리하여, 코어의 순수성을 지키면서도 기능을 유연하게 확장할 수 있는 구조를 만들었습니다.
+그다음 인터프리터를 구현했습니다. `geth`는 tracer 같은 확장 기능을 코어 로직 안에 분기문으로 넣는 방식이라,
+저는 **위임**을 써서 핵심 로직과 확장 로직을 분리했습니다.
 
 ```kotlin
 open class EVMInterpreter(private val instructionSet: InstructionSet) {
@@ -186,7 +184,7 @@ open class EVMInterpreter(private val instructionSet: InstructionSet) {
 ```
 
 참고차 `geth` 가 인터프리터를 확장하는 방식을 추가합니다.
-하단과 같이 코어 로직 내부에 `if (evm.Config.Tracer != null)` 같은 분기문을 삽입하여, **핵심 비즈니스 로직과 부가 로직이 강하게 결합** 되어 있었습니다.
+아래처럼 코어 로직 안에 `if (evm.Config.Tracer != null)` 같은 분기문이 들어가 있습니다.
 
 ```golang
 func (evm *EVM) DelegateCall(originCaller common.Address, caller common.Address, addr common.Address, input []byte, gas uint64, value *uint256.Int) (ret []byte, leftOverGas uint64, err error) {
@@ -251,7 +249,6 @@ fun test() {
 
 ## 결과
 
-- Core Level Deep Dive: 블록체인의 가장 밑바닥인 `trie`부터 실행 엔진인 `evm`까지 직접 구현하며, 시스템의 동작 원리를 바이트 단위까지 이해했습니다.
-- Problem Solving: 이 프로젝트에서 얻은 통찰력은 실무에서의 **대규모 성능 최적화(1000% 향상)** 와 **장애 대응(6시간 중단 사고 해결)** 등 블록체인 코어를 유지보수 할 수 있는 핵심
-  원동력이 되었습니다.
-- Expansion: 이 경험은 단순한 학습을 넘어, 이더리움 개발 환경을 혁신하는 [IntelliJ Plugin 개발 프로젝트](intellij-ethereum-plugin.md)로 이어졌습니다.
+- `trie`부터 `evm`까지 직접 구현하면서 `geth` 내부 동작을 훨씬 잘 이해하게 되었습니다.
+- 이 이해가 업무에서 [zktrie 성능 개선](../lightscale/zktrie.md)과 장애 대응에 직접적인 도움이 되었습니다.
+- 이후 [IntelliJ Plugin 프로젝트](intellij-ethereum-plugin.md)로 이어졌습니다.
