@@ -17,14 +17,9 @@ Kotlin/Spring 기반 백엔드 개발자입니다. 커머스 서비스 백엔드
 | 프로젝트                                        | 한 줄 요약                          |
 |---------------------------------------------|---------------------------------|
 | [복권 시스템](bunjang/lottery.md)                | Redis List 기반 당첨 처리, 중복 당첨 0건    |
-| [광고 최적화](bunjang/advertisement.md)          | 미송출 비율 20% → 약 5%, 일 추가 수익 약 100만원 |
 | [광고 미디에이션 전환](bunjang/ad-mediation.md)      | 직군 간 경계 재설계, SDK 변경이 웹뷰·백엔드로 퍼지지 않는 구조 |
-| [백엔드 공통 라이브러리](bunjang/platform.md)         | API/Batch/Data 계층 공통 라이브러리 개발    |
-| [이벤트 발행/구독 라이브러리](bunjang/event-stream.md)  | 전사 공용 채택, 5년 뒤 v2 재설계          |
-| [금지어 탐지](bunjang/keyword-policy.md)         | 탐지 파이프라인 재설계, 처리량 2배 이상 향상      |
+| [백엔드 공통 라이브러리](bunjang/platform.md)         | API/Batch/Data/Event 계층 공통 라이브러리 개발    |
 | [블록체인 코어 최적화](lightscale/zktrie.md)         | zktrie 재구현, 처리량 300% 향상          |
-| [keth-client (개인)](personal/keth-client.md) | Kotlin Ethereum SDK             |
-| [keth (개인)](personal/keth.md)               | Kotlin으로 EVM, StateDB, MPT 구현    |
 
 > 전체 프로젝트 목록은 [all-projects.md](all-projects.md)에서 확인하실 수 있습니다.
 
